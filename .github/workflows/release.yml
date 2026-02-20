@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun test
+
+      - name: Build macOS arm64
+        run: bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile dist/wd-bin-arm64
+
+      - name: Build macOS x64
+        run: bun build src/index.ts --compile --target=bun-darwin-x64 --outfile dist/wd-bin-x64
+
+      - name: Create tarballs
+        run: |
+          cd dist
+          cp wd-bin-arm64 wd-bin
+          tar -czf wd-macos-arm64.tar.gz wd-bin ../shell/wd.zsh --transform='s|../shell/||'
+          cp wd-bin-x64 wd-bin
+          tar -czf wd-macos-x64.tar.gz wd-bin ../shell/wd.zsh --transform='s|../shell/||'
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum wd-macos-arm64.tar.gz wd-macos-x64.tar.gz > checksums.sha256
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/wd-macos-arm64.tar.gz
+            dist/wd-macos-x64.tar.gz
+            dist/checksums.sha256
+
+      - name: Trigger Homebrew tap update
+        if: success()
+        run: |
+          ARM64_SHA=$(sha256sum dist/wd-macos-arm64.tar.gz | cut -d' ' -f1)
+          X64_SHA=$(sha256sum dist/wd-macos-x64.tar.gz | cut -d' ' -f1)
+          VERSION=${GITHUB_REF_NAME#v}
+          gh workflow run update-formula.yml \
+            --repo kerdofficial/homebrew-tap \
+            -f version="$VERSION" \
+            -f sha256_arm64="$ARM64_SHA" \
+            -f sha256_x64="$X64_SHA"
+        env:
+          GH_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}

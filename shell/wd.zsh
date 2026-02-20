@@ -2,7 +2,8 @@
 # Shell integration for zsh
 #
 # Add to your ~/.zshrc:
-#   source ~/.config/wd/wd.zsh
+#   source $(brew --prefix)/share/wd/wd.zsh     # if installed via Homebrew
+#   source ~/.config/wd/wd.zsh                   # if installed manually
 
 function wd() {
   local tmpfile

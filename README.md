@@ -30,6 +30,20 @@ When you have dozens (or hundreds) of projects spread across multiple directorie
 
 ## Installation
 
+### Homebrew (recommended)
+
+```sh
+brew install kerdofficial/tap/wd
+```
+
+Then add the shell integration to your `~/.zshrc`:
+
+```sh
+source $(brew --prefix)/share/wd/wd.zsh
+```
+
+### Manual
+
 ```sh
 git clone https://github.com/kerdofficial/wd
 cd wd
@@ -48,6 +62,8 @@ Add the shell integration to your `~/.zshrc`:
 ```sh
 source ~/.config/wd/wd.zsh
 ```
+
+### First-time setup
 
 Run first-time setup:
 
