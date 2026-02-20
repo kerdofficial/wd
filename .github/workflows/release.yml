@@ -26,11 +26,12 @@ jobs:
 
       - name: Create tarballs
         run: |
-          cd dist
-          cp wd-bin-arm64 wd-bin
-          tar -czf wd-macos-arm64.tar.gz wd-bin ../shell/wd.zsh --transform='s|../shell/||'
-          cp wd-bin-x64 wd-bin
-          tar -czf wd-macos-x64.tar.gz wd-bin ../shell/wd.zsh --transform='s|../shell/||'
+          mkdir -p staging
+          cp shell/wd.zsh staging/
+          cp dist/wd-bin-arm64 staging/wd-bin
+          tar -czf dist/wd-macos-arm64.tar.gz -C staging wd-bin wd.zsh
+          cp dist/wd-bin-x64 staging/wd-bin
+          tar -czf dist/wd-macos-x64.tar.gz -C staging wd-bin wd.zsh
 
       - name: Generate checksums
         run: |
