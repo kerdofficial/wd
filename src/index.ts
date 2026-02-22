@@ -13,7 +13,7 @@ program
   .allowExcessArguments(true);
 
 // Flags that signal the user wants `wd new` without typing the subcommand
-const NEW_FLAGS = new Set(["--template", "--variant", "--pm", "--dir", "--raw", "--dry-run", "-t"]);
+const NEW_FLAGS = new Set(["--template", "--variant", "--pm", "--dir", "--raw", "--dry-run", "-t", "-v", "--package-manager"]);
 function argvWantsNew(): boolean {
   return process.argv.slice(2).some((a) => NEW_FLAGS.has(a));
 }

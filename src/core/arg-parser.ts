@@ -33,6 +33,14 @@ export interface ParsedArgs {
   unknownFlags: string[];
 }
 
+// ─── Fixed flag aliases ────────────────────────────────────────────────────────
+
+const FIXED_ALIASES: Record<string, string> = {
+  "-t": "--template",
+  "-v": "--variant",
+  "--package-manager": "--pm",
+};
+
 // ─── Fixed flag names ─────────────────────────────────────────────────────────
 
 const FIXED_FLAGS = new Set([
@@ -77,32 +85,33 @@ export function parseNewArgs(
   let i = 0;
   while (i < argv.length) {
     const arg = argv[i]!;
+    const resolvedArg = FIXED_ALIASES[arg] ?? arg;
 
     // Boolean fixed flags
-    if (arg === "--verbose") {
+    if (resolvedArg === "--verbose") {
       result.verbose = true;
       i++;
       continue;
     }
-    if (arg === "--raw") {
+    if (resolvedArg === "--raw") {
       result.raw = true;
       i++;
       continue;
     }
-    if (arg === "--dry-run") {
+    if (resolvedArg === "--dry-run") {
       result.dryRun = true;
       i++;
       continue;
     }
 
     // Value fixed flags
-    if (arg === "--template" || arg === "--variant" || arg === "--pm" || arg === "--dir") {
+    if (resolvedArg === "--template" || resolvedArg === "--variant" || resolvedArg === "--pm" || resolvedArg === "--dir") {
       const value = argv[i + 1];
       if (value && !value.startsWith("-")) {
-        if (arg === "--template") result.template = value;
-        else if (arg === "--variant") result.variant = value;
-        else if (arg === "--pm") result.pm = value;
-        else if (arg === "--dir") result.dir = value;
+        if (resolvedArg === "--template") result.template = value;
+        else if (resolvedArg === "--variant") result.variant = value;
+        else if (resolvedArg === "--pm") result.pm = value;
+        else if (resolvedArg === "--dir") result.dir = value;
         i += 2;
       } else {
         i++;

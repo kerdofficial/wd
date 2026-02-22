@@ -85,6 +85,18 @@ describe("parseNewArgs — fixed flags", () => {
     expect(parseNewArgs(["--dry-run"]).dryRun).toBe(true);
   });
 
+  test("-t alias for --template", () => {
+    expect(parseNewArgs(["-t", "nextjs"]).template).toBe("nextjs");
+  });
+
+  test("-v alias for --variant", () => {
+    expect(parseNewArgs(["-v", "shadcn"]).variant).toBe("shadcn");
+  });
+
+  test("--package-manager alias for --pm", () => {
+    expect(parseNewArgs(["--package-manager", "bun"]).pm).toBe("bun");
+  });
+
   test("positional app name", () => {
     expect(parseNewArgs(["my-app"]).appName).toBe("my-app");
   });
