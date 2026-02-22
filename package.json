@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "bun build src/index.ts --compile --outfile dist/wd-bin",
-    "test": "bun test"
+    "test": "bun test src/",
+    "test:integration": "bun test integration/template-integration.test.ts"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.0.0",
