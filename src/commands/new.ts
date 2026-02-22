@@ -6,13 +6,13 @@
  * and dynamic flags for additional parameters (--base-color zinc, etc.)
  */
 import { input, select, search, checkbox, confirm } from "@inquirer/prompts";
-import { join } from "node:path";
+import { join, basename } from "node:path";
 import { mkdir } from "node:fs/promises";
 import { loadTemplates, type CollisionError } from "../core/templates";
 import { interpolate, validatePlaceholders } from "../core/interpolation";
 import { executeCommand, printCommandError } from "../core/executor";
 import { parseNewArgs, extractNewArgv } from "../core/arg-parser";
-import { requireConfig } from "../config/manager";
+import { requireConfig, saveConfig, loadHistory, saveHistory } from "../config/manager";
 import { runPendingMigrations } from "../config/migrations";
 import type { ShellOutput } from "../utils/shell";
 import type {
@@ -33,6 +33,7 @@ import {
   Spinner,
 } from "../ui/format";
 import { gracefulRun } from "../utils/prompt-wrapper";
+import { recordVisit } from "../core/frecency";
 import { pathExists } from "../utils/fs";
 import directorySearch from "../ui/directory-search";
 
@@ -59,12 +60,6 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
   // ── One-time setup (before wizard loop) ───────────────────────────────────
 
   const cliArgs = parseNewArgs(extractNewArgv(process.argv));
-
-  if (cliArgs.unknownFlags.length > 0) {
-    for (const flag of cliArgs.unknownFlags) {
-      console.log(`${yellow("!")} Unknown flag ignored: ${gray(flag)}`);
-    }
-  }
 
   const config = await runPendingMigrations();
   const gistUrl = config?.projectConstructor?.templates?.gistUrl ?? "";
@@ -112,6 +107,12 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
   }
 
   const cliArgsFull = parseNewArgs(extractNewArgv(process.argv), templates);
+
+  if (cliArgsFull.unknownFlags.length > 0) {
+    for (const flag of cliArgsFull.unknownFlags) {
+      console.log(`${yellow("!")} Unknown flag ignored: ${gray(flag)}`);
+    }
+  }
 
   // ── Wizard loop ───────────────────────────────────────────────────────────
   // `prev` is null on the first run, set to the previous round's values on edit.
@@ -199,7 +200,15 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
     let selectedVariant: Variant;
     if (selectedTemplate.variants.length === 1) {
       selectedVariant = selectedTemplate.variants[0]!;
-      if (selectedVariant.type !== "default") {
+      if (
+        cliArgsFull.variant &&
+        cliArgsFull.variant !== selectedVariant.type &&
+        cliArgsFull.variant.toLowerCase() !== selectedVariant.name.toLowerCase()
+      ) {
+        console.log(
+          `${yellow("!")} Variant "${cliArgsFull.variant}" not available for this template; using ${bold(selectedVariant.name)}`,
+        );
+      } else if (selectedVariant.type !== "default") {
         console.log(`${green("✓")} Variant: ${bold(selectedVariant.name)}`);
       }
     } else if (cliArgsFull.variant && !isEdit) {
@@ -317,6 +326,27 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
         pageSize: 10,
       });
       targetDir = dirResult.path;
+
+      if (dirResult.isNew) {
+        const isUnderRoot = configData.scanRoots.some((r) =>
+          targetDir.startsWith(r.path),
+        );
+        if (!isUnderRoot) {
+          const addRoot = await confirm({
+            message: `Add ${bold(targetDir)} as a new scan root?`,
+            default: false,
+          });
+          if (addRoot) {
+            const label = await input({
+              message: "Label for this scan root:",
+              default: basename(targetDir),
+            });
+            configData.scanRoots.push({ path: targetDir, label, maxDepth: 3 });
+            await saveConfig(configData);
+            console.log(`${green("✓")} Scan root added: ${bold(targetDir)}`);
+          }
+        }
+      }
     }
 
     const projectPath = dryRun
@@ -467,7 +497,26 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
 
     // ── Step 11: Post-create commands ───────────────────────────────────────
 
+    const optionalParamKeys = new Set(
+      (selectedVariant.additionalParameters ?? [])
+        .filter((p) => p.optional)
+        .map((p) => p.parameterKey),
+    );
+
     for (const postCmd of selectedVariant.postCreateCommands ?? []) {
+      const postValidation = validatePlaceholders(postCmd, context);
+      if (!postValidation.valid) {
+        const allMissingAreOptional = postValidation.missing.every((key) =>
+          optionalParamKeys.has(key),
+        );
+        if (allMissingAreOptional) {
+          console.log(
+            `${yellow("!")} Skipping post-create command (optional params not set): ${gray(postCmd.slice(0, 60))}`,
+          );
+          continue;
+        }
+      }
+
       const interpolatedPost = interpolate(postCmd, context);
       const postResult = await executeCommand(interpolatedPost, {
         cwd: projectPath,
@@ -491,6 +540,10 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
 
     shellOutput.cd(projectPath);
     await shellOutput.flush();
+
+    const history = await loadHistory();
+    const updatedHistory = recordVisit(history, projectPath);
+    await saveHistory(updatedHistory);
 
     // ── Step 13: Success ────────────────────────────────────────────────────
 
