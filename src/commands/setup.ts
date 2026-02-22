@@ -8,8 +8,7 @@ import { pathExists, isDirectory } from "../utils/fs";
 import { bold, green, yellow, gray, cyan, Spinner, printHeader, clearScreen } from "../ui/format";
 import { gracefulRun } from "../utils/prompt-wrapper";
 import { paths } from "../config/paths";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, existsSync } from "node:fs";
 
 async function installShellScript(): Promise<void> {
   // Copy shell/wd.zsh to ~/.config/wd/wd.zsh
@@ -71,8 +70,10 @@ async function _setup(): Promise<void> {
 
   let config: Config = (await loadConfig()) ?? {
     version: 1,
+    configVersion: 0,
     scanRoots: [],
     customTypes: [],
+    projectConstructor: { templates: { gistUrl: "" } },
     preferences: {
       showProjectType: true,
       showCategory: true,
@@ -183,6 +184,33 @@ async function _setup(): Promise<void> {
     spinner.stop(`${green("✓")} Found ${bold(String(projects.length))} projects`);
   }
 
+  // Init templates directory with example template
+  try {
+    await mkdir(paths.templatesDir, { recursive: true });
+    const examplePath = paths.template("example");
+    if (!existsSync(examplePath)) {
+      const exampleTemplate = {
+        id: "example-hidden",
+        hidden: true,
+        name: "Example Template",
+        description: "Example template — set hidden: false to show in wd new",
+        variants: [
+          {
+            type: "default",
+            name: "Default",
+            command: "echo 'Creating {PROJECT_NAME} with {PACKAGE_MANAGER.command}'",
+            supportedPackageManagers: [
+              { name: "bun", command: "bunx --bun", commandParam: "bun" },
+            ],
+          },
+        ],
+      };
+      await Bun.write(examplePath, JSON.stringify(exampleTemplate, null, 2));
+    }
+  } catch {
+    // Non-fatal
+  }
+
   console.log(`
 ${bold("Setup complete!")}
 
@@ -197,6 +225,7 @@ Then restart your shell:
 Quick start:
   ${cyan("wd")}          ${gray("→ interactive project selector")}
   ${cyan("wd recent")}   ${gray("→ recently visited projects")}
+  ${cyan("wd new")}      ${gray("→ create a new project from template")}
   ${cyan("wd ws new")}   ${gray("→ create a workspace")}
   ${cyan("wd open")} ${gray("<name>")}  ${gray("→ open a workspace")}
 `);

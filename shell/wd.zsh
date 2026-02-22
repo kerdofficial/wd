@@ -37,6 +37,7 @@ _wd_complete() {
       local subcommands=(
         'setup:Configure base directories'
         'scan:Rescan project directories'
+        'new:Create a new project from template'
         'open:Open a workspace'
         'recent:Show recently accessed projects'
         'ws:Manage workspaces'

@@ -8,13 +8,27 @@ program
   .name("wd-bin")
   .description("Workspace Director — fast project navigation")
   .version("1.2.1")
-  .option("--shell-out <path>", "internal: path to write shell commands");
+  .option("--shell-out <path>", "internal: path to write shell commands")
+  .allowUnknownOption()
+  .allowExcessArguments(true);
 
-// Default action: interactive project selector
+// Flags that signal the user wants `wd new` without typing the subcommand
+const NEW_FLAGS = new Set(["--template", "--variant", "--pm", "--dir", "--raw", "--dry-run", "-t"]);
+function argvWantsNew(): boolean {
+  return process.argv.slice(2).some((a) => NEW_FLAGS.has(a));
+}
+
+// Default action: interactive project selector — or redirect to `wd new`
 program.action(async (options) => {
-  const { select } = await import("./commands/select");
   const shellOut = new ShellOutput(options.shellOut as string | undefined);
-  await select(shellOut);
+  if (argvWantsNew()) {
+    // User typed e.g. `wd my-app --template nextjs` without the `new` subcommand
+    const { newProject } = await import("./commands/new");
+    await newProject(shellOut);
+  } else {
+    const { select } = await import("./commands/select");
+    await select(shellOut);
+  }
 });
 
 // wd setup
@@ -63,6 +77,21 @@ program
         | undefined,
     );
     await open(name, shellOut);
+  });
+
+// wd new [app-name]
+program
+  .command("new [app-name]")
+  .description("Create a new project from a template")
+  .allowUnknownOption()
+  .allowExcessArguments(true)
+  .action(async (_, __, cmd) => {
+    const { newProject } = await import("./commands/new");
+    const parentCmd = cmd.parent as typeof program | undefined;
+    const shellOut = new ShellOutput(
+      parentCmd?.opts().shellOut as string | undefined
+    );
+    await newProject(shellOut);
   });
 
 // wd ws [new|list|delete]
