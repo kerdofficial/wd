@@ -38,7 +38,7 @@ async function executeSilent(
     const proc = Bun.spawn(["sh", "-c", cmd], {
       stdout: "pipe",
       stderr: "pipe",
-      stdin: "ignore",
+      stdin: "inherit",
       cwd: opts.cwd,
     });
 
