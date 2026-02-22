@@ -1,16 +1,28 @@
 /**
  * Template loading: gist fetch + custom local templates + merge.
  * Custom template IDs must not collide with gist template IDs.
+ *
+ * Template source is determined by TEMPLATES_SOURCE_URL (constant below).
+ * Users can override it via config.projectConstructor.templates.gistUrl.
+ * Supports file:// (local) and https:// (remote) URLs.
  */
 import { readdir } from "node:fs/promises";
 import { mkdir } from "node:fs/promises";
 import { paths } from "../config/paths";
-import { TemplateSchema, type Template, type TemplateCache } from "../config/schema";
+import {
+  TemplateSchema,
+  type Template,
+  type TemplateCache,
+} from "../config/schema";
 import {
   loadTemplateCache,
   saveTemplateCache,
   isTemplateCacheStale,
 } from "./template-cache";
+
+// ─── Source URL ───────────────────────────────────────────────────────────────
+export const TEMPLATES_SOURCE_URL =
+  "https://gist.githubusercontent.com/kerdofficial/8d6fc38b5427ed59a7fcc8964c70fd10/raw";
 
 // ─── Template source fetch ────────────────────────────────────────────────────
 
@@ -94,7 +106,7 @@ export interface CollisionError {
 
 function checkCollisions(
   gistTemplates: Template[],
-  customTemplates: Template[]
+  customTemplates: Template[],
 ): CollisionError[] {
   const errors: CollisionError[] = [];
   const gistById = new Map(gistTemplates.map((t) => [t.id, t]));
@@ -185,7 +197,7 @@ export async function loadTemplates(opts: {
  * Called after `wd scan` finishes.
  */
 export async function refreshTemplateCacheBackground(
-  gistUrl: string
+  gistUrl: string,
 ): Promise<void> {
   if (!gistUrl) return;
   try {

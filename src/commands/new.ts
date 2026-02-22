@@ -8,7 +8,7 @@
 import { input, select, search, checkbox, confirm } from "@inquirer/prompts";
 import { join, basename } from "node:path";
 import { mkdir } from "node:fs/promises";
-import { loadTemplates, type CollisionError } from "../core/templates";
+import { loadTemplates, TEMPLATES_SOURCE_URL, type CollisionError } from "../core/templates";
 import { interpolate, validatePlaceholders } from "../core/interpolation";
 import { executeCommand, printCommandError } from "../core/executor";
 import { parseNewArgs, extractNewArgv } from "../core/arg-parser";
@@ -62,7 +62,7 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
   const cliArgs = parseNewArgs(extractNewArgv(process.argv));
 
   const config = await runPendingMigrations();
-  const gistUrl = config?.projectConstructor?.templates?.gistUrl ?? "";
+  const gistUrl = config?.projectConstructor?.templates?.gistUrl || TEMPLATES_SOURCE_URL;
 
   const spinner = new Spinner("Loading templates…");
   spinner.start();

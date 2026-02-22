@@ -2,7 +2,7 @@ import { requireConfig, saveCache } from "../config/manager";
 import { scanProjects } from "../core/scanner";
 import { Spinner, bold, green, gray, typeBadge, registerCustomTypes } from "../ui/format";
 import type { Cache, ProjectType } from "../config/schema";
-import { refreshTemplateCacheBackground } from "../core/templates";
+import { refreshTemplateCacheBackground, TEMPLATES_SOURCE_URL } from "../core/templates";
 
 export async function scan(): Promise<void> {
   const config = await requireConfig();
@@ -72,7 +72,7 @@ export async function scan(): Promise<void> {
   console.log();
 
   // Background template cache refresh
-  const gistUrl = config.projectConstructor?.templates?.gistUrl ?? "";
+  const gistUrl = config.projectConstructor?.templates?.gistUrl || TEMPLATES_SOURCE_URL;
   if (gistUrl) {
     void refreshTemplateCacheBackground(gistUrl);
   }
