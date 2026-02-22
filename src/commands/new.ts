@@ -8,11 +8,20 @@
 import { input, select, search, checkbox, confirm } from "@inquirer/prompts";
 import { join, basename } from "node:path";
 import { mkdir } from "node:fs/promises";
-import { loadTemplates, TEMPLATES_SOURCE_URL, type CollisionError } from "../core/templates";
+import {
+  loadTemplates,
+  TEMPLATES_SOURCE_URL,
+  type CollisionError,
+} from "../core/templates";
 import { interpolate, validatePlaceholders } from "../core/interpolation";
 import { executeCommand, printCommandError } from "../core/executor";
 import { parseNewArgs, extractNewArgv } from "../core/arg-parser";
-import { requireConfig, saveConfig, loadHistory, saveHistory } from "../config/manager";
+import {
+  requireConfig,
+  saveConfig,
+  loadHistory,
+  saveHistory,
+} from "../config/manager";
 import { runPendingMigrations } from "../config/migrations";
 import type { ShellOutput } from "../utils/shell";
 import type {
@@ -36,6 +45,31 @@ import { gracefulRun } from "../utils/prompt-wrapper";
 import { recordVisit } from "../core/frecency";
 import { pathExists } from "../utils/fs";
 import directorySearch from "../ui/directory-search";
+
+// ─── Tips shown randomly on each wizard run ───────────────────────────────────
+
+const TIPS = [
+  `Use ${bold("-t <name>")} to skip template selection, e.g. ${gray("wd new -t nextjs")}`,
+  `Use ${bold("-v <type>")} to pre-select a variant, e.g. ${gray("wd new -t nextjs -v shadcn")}`,
+  `Use ${bold("--pm")} or ${bold("--package-manager")} to set the package manager, e.g. ${gray("--pm bun")}`,
+  `Use ${bold("--dir <path>")} to skip the directory picker and go straight to creation`,
+  `Use ${bold("--dry-run")} to preview the create command without writing any files`,
+  `Use ${bold("--verbose")} to stream live output instead of the spinner`,
+  `Use ${bold("--raw")} to force-refresh the template cache from the source`,
+  `Pass the project name as the first argument: ${gray("wd new my-app -t nextjs")}`,
+  `Dynamic template flags like ${bold("--base-color zinc")} pre-fill additional parameters`,
+  `Templates expose short aliases for dynamic flags, e.g. ${gray("-bc zinc")} instead of ${gray("--base-color zinc")}`,
+  `In the directory picker, type ${bold("@")} to fuzzy-search your configured scan roots`,
+  `In the directory picker, press ${bold("Tab")} to autocomplete the highlighted path`,
+  `Skip every prompt in one go: ${gray("wd new my-app -t nextjs -v shadcn -bc zinc --pm bun")}`,
+  `Choose ${bold("Edit")} in the summary prompt to go back and change any step`,
+  `If you type a new path in the directory picker, you'll be offered to add it as a scan root`,
+  `After creation the new project is automatically recorded in your frecency history`,
+];
+
+function randomTip(): string {
+  return TIPS[Math.floor(Math.random() * TIPS.length)]!;
+}
 
 // ─── Snapshot of a wizard round's collected values ───────────────────────────
 
@@ -62,7 +96,8 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
   const cliArgs = parseNewArgs(extractNewArgv(process.argv));
 
   const config = await runPendingMigrations();
-  const gistUrl = config?.projectConstructor?.templates?.gistUrl || TEMPLATES_SOURCE_URL;
+  const gistUrl =
+    config?.projectConstructor?.templates?.gistUrl || TEMPLATES_SOURCE_URL;
 
   const spinner = new Spinner("Loading templates…");
   spinner.start();
@@ -122,7 +157,13 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
   while (true) {
     clearScreen();
     printHeader();
-    console.log(`${bold("Project Constructor")}\n`);
+    console.log(`${bold("Project Constructor - BETA")}`);
+    console.log(
+      yellow(
+        "Project Constructor is currently in beta — you may encounter rough edges.\n",
+      ),
+    );
+    console.log(`${gray("Tip:")} ${randomTip()}\n`);
 
     const isEdit = prev !== null;
 
@@ -385,7 +426,10 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
       }
 
       const previewCmd = interpolate(selectedVariant.command, dryContext);
-      const validation = validatePlaceholders(selectedVariant.command, dryContext);
+      const validation = validatePlaceholders(
+        selectedVariant.command,
+        dryContext,
+      );
 
       console.log(`\n  ${gray("Command:")} ${cyan(previewCmd)}`);
 
