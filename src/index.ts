@@ -13,7 +13,17 @@ program
   .allowExcessArguments(true);
 
 // Flags that signal the user wants `wd new` without typing the subcommand
-const NEW_FLAGS = new Set(["--template", "--variant", "--pm", "--dir", "--raw", "--dry-run", "-t", "-v", "--package-manager"]);
+const NEW_FLAGS = new Set([
+  "--template",
+  "--variant",
+  "--pm",
+  "--dir",
+  "--raw",
+  "--dry-run",
+  "-t",
+  "-v",
+  "--package-manager",
+]);
 function argvWantsNew(): boolean {
   return process.argv.slice(2).some((a) => NEW_FLAGS.has(a));
 }
@@ -38,6 +48,15 @@ program
   .action(async () => {
     const { setup } = await import("./commands/setup");
     await setup();
+  });
+
+// wd config
+program
+  .command("config")
+  .description("Manage wd configuration")
+  .action(async () => {
+    const { config } = await import("./commands/config");
+    await config();
   });
 
 // wd scan
@@ -89,7 +108,7 @@ program
     const { newProject } = await import("./commands/new");
     const parentCmd = cmd.parent as typeof program | undefined;
     const shellOut = new ShellOutput(
-      parentCmd?.opts().shellOut as string | undefined
+      parentCmd?.opts().shellOut as string | undefined,
     );
     await newProject(shellOut);
   });
