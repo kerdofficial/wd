@@ -116,6 +116,14 @@ program
 // wd ws [new|list|delete]
 const ws = program.command("ws").description("Manage workspace profiles");
 
+ws.action(async (_, cmd) => {
+  const { workspaceSelect } = await import("./commands/workspace-select");
+  const shellOut = new ShellOutput(
+    (cmd.parent as Command | undefined)?.opts().shellOut as string | undefined,
+  );
+  await workspaceSelect(shellOut);
+});
+
 ws.command("new")
   .description("Create a new workspace profile")
   .action(async () => {

@@ -23,6 +23,10 @@ import figures from "@inquirer/figures";
 
 export const ESCAPE_VALUE = "__escape__" as const;
 
+export function isEscape(v: string): boolean {
+  return v === ESCAPE_VALUE;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ActionChoice {
@@ -38,6 +42,8 @@ export interface ActionSelectConfig {
     key: string; // single lowercase letter, e.g. "e"
     value: string; // resolved value when triggered, e.g. "editor"
     label: string; // shown in help line, e.g. "open in editor"
+    /** If true, resolved value is "${value}:${selectedChoice.value}" */
+    includeChoice?: boolean;
   };
   loop?: boolean; // default false
 }
@@ -77,7 +83,10 @@ export const actionSelect = createPrompt<string, ActionSelectConfig>(
       // Ctrl+shortcut key
       if (shortcut && key.ctrl && key.name === shortcut.key) {
         setStatus("done");
-        done(shortcut.value);
+        const resolvedValue = shortcut.includeChoice
+          ? `${shortcut.value}:${selectedChoice.value}`
+          : shortcut.value;
+        done(resolvedValue);
         return;
       }
 
@@ -128,7 +137,7 @@ export const actionSelect = createPrompt<string, ActionSelectConfig>(
         const cursor = isActive ? theme.icon.cursor : " ";
         return color(`${cursor} ${item.name}`);
       },
-      pageSize: choices.length,
+      pageSize: choices.reduce((sum, c) => sum + c.name.split("\n").length, 0),
       loop: false,
     });
 
