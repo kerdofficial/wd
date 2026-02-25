@@ -7,6 +7,7 @@ import { printWorkspaceInfo } from "./workspace-list";
 import { actionSelect, isEscape } from "../ui/action-select";
 import { open } from "./open";
 import { workspaceEdit } from "./workspace-edit";
+import { workspaceDuplicate } from "./workspace-duplicate";
 import { gracefulRun } from "../utils/prompt-wrapper";
 import type { ShellOutput } from "../utils/shell";
 import type { Workspace } from "../config/schema";
@@ -111,6 +112,7 @@ async function showWorkspaceDetail(
       choices: [
         { name: "Open", value: "open" },
         { name: "Edit", value: "edit" },
+        { name: "Duplicate", value: "duplicate" },
         { name: "Delete", value: "delete" },
         { name: "Back", value: "back" },
       ],
@@ -121,6 +123,9 @@ async function showWorkspaceDetail(
     } else if (result === "open") {
       await open(name, shellOutput);
       return true;
+    } else if (result === "duplicate") {
+      await workspaceDuplicate(name);
+      // After duplicate, loop back to detail view
     } else if (result === "edit") {
       await workspaceEdit(name);
       // After edit the name might have changed — reload from disk by rescanning

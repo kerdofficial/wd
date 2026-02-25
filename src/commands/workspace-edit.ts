@@ -79,10 +79,13 @@ async function _workspaceEdit(name: string): Promise<void> {
   const newName = await input({
     message: "Workspace name:",
     default: existing.name,
-    validate: (v) => {
+    validate: async (v) => {
       if (!v.trim()) return "Name cannot be empty";
       if (!/^[a-z0-9-_]+$/i.test(v.trim()))
         return "Use only letters, numbers, hyphens, underscores";
+      const duplicate = await loadWorkspace(v.trim());
+      if (duplicate && v.trim() !== existing.name)
+        return `Workspace "${v.trim()}" already exists`;
       return true;
     },
   });

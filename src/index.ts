@@ -145,6 +145,14 @@ ws.command("edit <name>")
     await workspaceEdit(name);
   });
 
+ws.command("duplicate <name>")
+  .description("Duplicate an existing workspace")
+  .action(async (name: string) => {
+    const { workspaceDuplicate } =
+      await import("./commands/workspace-duplicate");
+    await workspaceDuplicate(name);
+  });
+
 ws.command("delete <name>")
   .description("Delete a workspace")
   .action(async (name: string) => {
