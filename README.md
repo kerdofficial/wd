@@ -1,12 +1,12 @@
 # wd — Workspace Director
 
-A fast macOS CLI tool for navigating between projects and launching development workspaces. Built with TypeScript and Bun.
+A fast macOS CLI tool for navigating between projects, creating new apps from templates, and launching development workspaces. Built with TypeScript and Bun.
 
 ## The problem
 
 When you have dozens (or hundreds) of projects spread across multiple directories, getting to the right one is friction. You `cd` into the wrong folder, you forget the exact directory name, you open four terminal tabs manually every time you start working on a project.
 
-`wd` solves the navigation part, and gives you a workspace system so a single command can drop you into the right directory, start your Docker services, and open all the terminal tabs you need — each with the right command already running.
+`wd` solves the navigation part, adds a workspace system so a single command can drop you into the right directory and start your usual setup, and includes a Project Constructor for creating new projects from templates.
 
 ## Features
 
@@ -14,11 +14,14 @@ When you have dozens (or hundreds) of projects spread across multiple directorie
 - **Frecency ranking** — projects you use most recently and frequently appear first
 - **Configurable scan roots** — point it at any directories, it finds all your projects automatically
 - **Project type detection** — recognizes Next.js, NestJS, Angular, Flutter, Swift, Rust, Tauri, and more
+- **Project Constructor** — create new projects from built-in or local custom templates with interactive or flag-driven flows
 - **Workspace profiles** — group related projects (e.g. frontend + backend) and attach Docker containers
+- **Workspace browser** — inspect, open, edit, duplicate, or delete workspaces from an interactive `wd ws` menu
 - **Terminal tab opening** — each workspace project can specify tabs to open with commands (`bun dev`, `claude`, etc.)
 - **Docker integration** — start named containers or docker-compose services when opening a workspace
 - **Docker port conflict resolution** — if a container fails due to a port conflict, wd detects which container is blocking and offers to stop it
-- **Custom project types** — define your own detection rules for frameworks not built-in
+- **Interactive configuration menu** — manage scan roots, custom types, preferences, ignore rules, and template source settings with `wd config`
+- **Custom project types and templates** — extend detection rules and add your own local templates
 - **Shell integration** — actually changes your working directory (not just prints a path)
 
 ## Requirements
@@ -71,12 +74,12 @@ Run first-time setup:
 wd setup
 ```
 
-Restart your shell or `source ~/.zshrc`.
+`wd setup` creates `~/.config/wd/`, copies the shell wrapper to `~/.config/wd/wd.zsh`, offers an initial scan, and initializes the local templates directory with an example hidden template. Restart your shell or `source ~/.zshrc` afterwards.
 
 ## Quick start
 
 ```sh
-# Configure which directories to scan
+# Configure scan roots and install the shell wrapper
 wd setup
 
 # Navigate to a project
@@ -85,16 +88,25 @@ wd
 # See recently visited projects
 wd recent
 
-# Create a workspace (group of related projects + terminal tabs + Docker)
+# Create a new project from a template
+wd new my-app -t nextjs
+
+# Manage scan roots, preferences, custom types, and template source settings
+wd config
+
+# Create a workspace
 wd ws new
 
-# Edit an existing workspace
-wd ws edit my-workspace
+# Browse workspaces interactively
+wd ws
 
-# Open a workspace (cd + start Docker + open tabs)
+# Duplicate an existing workspace
+wd ws duplicate my-workspace
+
+# Open a workspace (cd + Docker + tabs)
 wd open my-workspace
 
-# Rescan after adding new projects
+# Rescan after adding or moving projects
 wd scan
 ```
 
@@ -106,13 +118,15 @@ Because a child process cannot change your shell's working directory, `wd` uses 
 
 When opening a workspace, `wd` uses AppleScript (via `osascript`) to open additional terminal tabs. It detects your terminal from `$TERM_PROGRAM` and uses the appropriate API: native AppleScript for iTerm2 and Terminal.app, keystroke simulation for Ghostty and Warp.
 
+`wd new` loads templates from a default remote source, merges them with local templates from `~/.config/wd/templates/`, caches remote templates locally, and then runs the selected template command with your chosen options.
+
 ## Project structure
 
-```
+```text
 src/
   commands/      — one file per CLI command
   config/        — schema (Zod), file manager, path constants
-  core/          — scanner, detector, fuzzy search, frecency, docker, terminal
+  core/          — scanner, detector, fuzzy search, frecency, docker, templates, terminal
   ui/            — ANSI colors, spinner, formatters
   utils/         — shell output protocol, fs helpers, prompt wrapper
 shell/
@@ -121,14 +135,16 @@ shell/
 
 ## Configuration
 
-All config lives in `~/.config/wd/`:
+All config lives in `~/.config/wd/`. Most day-to-day settings can be managed from `wd config`.
 
-| File           | Purpose                                        |
-| -------------- | ---------------------------------------------- |
-| `config.json`  | Scan roots, preferences, custom types          |
-| `cache.json`   | Cached project list (auto-refreshed every 24h) |
-| `history.json` | Visit history for frecency ranking             |
-| `workspaces/`  | Workspace definition files                     |
+| File                          | Purpose                                                        |
+| ----------------------------- | -------------------------------------------------------------- |
+| `config.json`                 | Scan roots, preferences, custom types, and template source URL |
+| `cache.json`                  | Cached project list (auto-refreshed every 24h)                 |
+| `history.json`                | Visit history for frecency ranking                             |
+| `workspaces/`                 | Workspace definition files                                     |
+| `templates/`                  | Local custom templates and template cache                      |
+| `templates/template-cache.json` | Cached remote templates used by `wd new`                     |
 
 ## License
 
