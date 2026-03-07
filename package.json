@@ -1,13 +1,14 @@
 {
   "name": "wd-cli",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "private": true,
   "description": "Workspace Director - fast project navigation CLI",
   "type": "module",
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "bun build src/index.ts --compile --outfile dist/wd-bin",
-    "test": "bun test"
+    "test": "bun test src/",
+    "test:integration": "bun test integration/template-integration.test.ts"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.0.0",
