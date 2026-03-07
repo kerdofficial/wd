@@ -127,13 +127,14 @@ describe("parseNewArgs — combined flags", () => {
   });
 
   test("fixed + dynamic flags together", () => {
+    const templates = [makeTemplate("next", "bc", "base-color", "BASE_COLOR")];
     const result = parseNewArgs([
       "my-app",
       "--template", "nextjs",
       "--pm", "bun",
       "--base-color", "zinc",
       "--verbose",
-    ]);
+    ], templates);
     expect(result.appName).toBe("my-app");
     expect(result.template).toBe("nextjs");
     expect(result.pm).toBe("bun");
@@ -142,17 +143,23 @@ describe("parseNewArgs — combined flags", () => {
   });
 
   test("multiple dynamic flags together", () => {
+    const templates = [
+      makeTemplate("next", "bc", "base-color", "BASE_COLOR"),
+      makeTemplate("react", "rt", "router", "ROUTER_TYPE"),
+      makeTemplate("tailwind", "tw", "tailwind", "TAILWIND"),
+    ];
     const result = parseNewArgs([
       "--base-color", "zinc",
       "--router", "app",
       "--tailwind", "yes",
-    ]);
+    ], templates);
     expect(result.dynamicFlags.get("base-color")).toBe("zinc");
     expect(result.dynamicFlags.get("router")).toBe("app");
     expect(result.dynamicFlags.get("tailwind")).toBe("yes");
   });
 
   test("dry-run with template flags", () => {
+    const templates = [makeTemplate("next", "bc", "base-color", "BASE_COLOR")];
     const result = parseNewArgs([
       "my-app",
       "--template", "nextjs",
@@ -160,7 +167,7 @@ describe("parseNewArgs — combined flags", () => {
       "--pm", "pnpm",
       "--base-color", "slate",
       "--dry-run",
-    ]);
+    ], templates);
     expect(result.appName).toBe("my-app");
     expect(result.template).toBe("nextjs");
     expect(result.variant).toBe("shadcn");
@@ -249,10 +256,11 @@ describe("parseNewArgs — invalid and edge cases", () => {
     expect(result.pm).toBe("bun");
   });
 
-  test("unknown long flag with value → dynamicFlags", () => {
+  test("unknown long flag with value goes to unknownFlags", () => {
     const result = parseNewArgs(["--unknown-thing", "val"]);
-    expect(result.dynamicFlags.get("unknown-thing")).toBe("val");
-    expect(result.unknownFlags).not.toContain("--unknown-thing");
+    expect(result.dynamicFlags.get("unknown-thing")).toBeUndefined();
+    expect(result.unknownFlags).toContain("--unknown-thing");
+    expect(result.appName).toBeUndefined();
   });
 
   test("unknown long flag without value → unknownFlags", () => {
@@ -263,6 +271,13 @@ describe("parseNewArgs — invalid and edge cases", () => {
   test("unknown long flag followed by another flag → unknownFlags", () => {
     const result = parseNewArgs(["--bad-flag", "--template", "nextjs"]);
     expect(result.unknownFlags).toContain("--bad-flag");
+    expect(result.template).toBe("nextjs");
+  });
+
+  test("unknown shorthand with value is ignored without becoming app name", () => {
+    const result = parseNewArgs(["-x", "value", "--template", "nextjs"]);
+    expect(result.unknownFlags).toContain("-x");
+    expect(result.appName).toBeUndefined();
     expect(result.template).toBe("nextjs");
   });
 
@@ -299,11 +314,11 @@ describe("extractNewArgv", () => {
     expect(extractNewArgv(argv)).toEqual(["my-app", "--template", "next"]);
   });
 
-  test("returns empty if 'new' not found", () => {
+  test("returns empty array if 'new' not found", () => {
     expect(extractNewArgv(["wd-bin", "scan"])).toEqual([]);
   });
 
-  test("returns empty if 'new' is last token", () => {
+  test("returns empty array if 'new' is last token", () => {
     expect(extractNewArgv(["wd-bin", "new"])).toEqual([]);
   });
 
@@ -312,7 +327,7 @@ describe("extractNewArgv", () => {
     expect(extractNewArgv(argv)).toEqual(["--template", "nextjs", "--dry-run"]);
   });
 
-  test("uses first occurrence of 'new'", () => {
+  test("uses first occurrence of 'new' as anchor", () => {
     const argv = ["wd-bin", "new", "my-new-app"];
     expect(extractNewArgv(argv)).toEqual(["my-new-app"]);
   });

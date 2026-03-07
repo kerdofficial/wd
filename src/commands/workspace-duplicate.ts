@@ -5,9 +5,13 @@ import { actionSelect, isEscape } from "../ui/action-select";
 import type { Workspace } from "../config/schema";
 import { bold, cyan, green, red, clearScreen, printHeader } from "../ui/format";
 import { gracefulRun } from "../utils/prompt-wrapper";
+import {
+  isValidWorkspaceName,
+  normalizeWorkspaceName,
+} from "../core/workspace-names";
 
 async function generateDuplicateName(baseName: string): Promise<string> {
-  const strippedBase = baseName
+  const strippedBase = normalizeWorkspaceName(baseName)
     .replace(/-duplicate-\d+$/, "")
     .replace(/-duplicate$/, "");
   const candidate = `${strippedBase}-duplicate`;
@@ -41,8 +45,8 @@ async function _workspaceDuplicate(name: string): Promise<void> {
     default: defaultName,
     validate: async (v) => {
       if (!v.trim()) return "Name cannot be empty";
-      if (!/^[a-z0-9-_]+$/i.test(v.trim()))
-        return "Use only letters, numbers, hyphens, underscores";
+      if (!isValidWorkspaceName(v))
+        return "Use only lowercase letters, numbers, hyphens, underscores";
       const existing = await loadWorkspace(v.trim());
       if (existing) return `Workspace "${v.trim()}" already exists`;
       return true;

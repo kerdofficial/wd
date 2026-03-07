@@ -55,6 +55,10 @@ const FIXED_FLAGS = new Set([
   "--shell-out",
 ]);
 
+function shouldConsumeFlagValue(value: string | undefined): value is string {
+  return value !== undefined && !value.startsWith("-");
+}
+
 // ─── Parser ───────────────────────────────────────────────────────────────────
 
 /**
@@ -81,6 +85,7 @@ export function parseNewArgs(
 
   // Build shorthand lookup: "bc" → "base-color"
   const shorthands = buildShorthandMap(templates);
+  const dynamicFlags = buildDynamicFlagSet(templates);
 
   let i = 0;
   while (i < argv.length) {
@@ -107,7 +112,7 @@ export function parseNewArgs(
     // Value fixed flags
     if (resolvedArg === "--template" || resolvedArg === "--variant" || resolvedArg === "--pm" || resolvedArg === "--dir") {
       const value = argv[i + 1];
-      if (value && !value.startsWith("-")) {
+      if (shouldConsumeFlagValue(value)) {
         if (resolvedArg === "--template") result.template = value;
         else if (resolvedArg === "--variant") result.variant = value;
         else if (resolvedArg === "--pm") result.pm = value;
@@ -130,12 +135,12 @@ export function parseNewArgs(
     if (arg.startsWith("--") && !FIXED_FLAGS.has(arg)) {
       const flagName = arg.slice(2);
       const value = argv[i + 1];
-      if (value !== undefined && !value.startsWith("-")) {
+      if (dynamicFlags.has(flagName) && shouldConsumeFlagValue(value)) {
         result.dynamicFlags.set(flagName, value);
         i += 2;
       } else {
         result.unknownFlags.push(arg);
-        i++;
+        i += shouldConsumeFlagValue(value) ? 2 : 1;
       }
       continue;
     }
@@ -144,9 +149,9 @@ export function parseNewArgs(
     if (arg.startsWith("-") && !arg.startsWith("--")) {
       const shortCode = arg.slice(1);
       const longName = shorthands.get(shortCode);
+      const value = argv[i + 1];
       if (longName) {
-        const value = argv[i + 1];
-        if (value !== undefined && !value.startsWith("-")) {
+        if (shouldConsumeFlagValue(value)) {
           result.dynamicFlags.set(longName, value);
           i += 2;
         } else {
@@ -154,7 +159,7 @@ export function parseNewArgs(
         }
       } else {
         result.unknownFlags.push(arg);
-        i++;
+        i += shouldConsumeFlagValue(value) ? 2 : 1;
       }
       continue;
     }
@@ -188,6 +193,20 @@ function buildShorthandMap(templates: Template[]): Map<string, string> {
     }
   }
   return map;
+}
+
+function buildDynamicFlagSet(templates: Template[]): Set<string> {
+  const flags = new Set<string>();
+  for (const template of templates) {
+    for (const variant of template.variants) {
+      for (const param of variant.additionalParameters ?? []) {
+        if (param.wizardParameter) {
+          flags.add(param.wizardParameter.default);
+        }
+      }
+    }
+  }
+  return flags;
 }
 
 /**

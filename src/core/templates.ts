@@ -40,6 +40,10 @@ async function fetchGistTemplates(gistUrl: string): Promise<Template[]> {
     if (gistUrl.startsWith("file://")) {
       // Local file — strip "file://" prefix and read directly
       const filePath = gistUrl.slice("file://".length);
+      // Safety: must be an absolute path with no traversal segments
+      if (!filePath.startsWith("/") || filePath.split("/").includes("..")) {
+        return [];
+      }
       const file = Bun.file(filePath);
       if (!(await file.exists())) return [];
       raw = await file.json();

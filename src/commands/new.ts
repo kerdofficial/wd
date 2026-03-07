@@ -16,6 +16,7 @@ import {
 import { interpolate, validatePlaceholders } from "../core/interpolation";
 import { executeCommand, printCommandError } from "../core/executor";
 import { parseNewArgs, extractNewArgv } from "../core/arg-parser";
+import { filterDynamicFlagsForVariant } from "../core/new-flags";
 import {
   requireConfig,
   saveConfig,
@@ -93,7 +94,8 @@ export async function newProject(shellOutput: ShellOutput): Promise<void> {
 async function _newProject(shellOutput: ShellOutput): Promise<void> {
   // ── One-time setup (before wizard loop) ───────────────────────────────────
 
-  const cliArgs = parseNewArgs(extractNewArgv(process.argv));
+  const newArgv = extractNewArgv(process.argv);
+  const cliArgs = parseNewArgs(newArgv);
 
   const config = await runPendingMigrations();
   const gistUrl =
@@ -141,18 +143,22 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
     return;
   }
 
-  const cliArgsFull = parseNewArgs(extractNewArgv(process.argv), templates);
+  const cliArgsFull = parseNewArgs(newArgv, templates);
 
   if (cliArgsFull.unknownFlags.length > 0) {
     for (const flag of cliArgsFull.unknownFlags) {
-      console.log(`${yellow("!")} Unknown flag ignored: ${gray(flag)}`);
+      console.warn(`${yellow("!")} Unknown flag ignored: ${gray(flag)}`);
     }
+    console.warn(
+      `${gray("  Known flags: --template (-t), --variant (-v), --pm, --dir, --dry-run, --verbose, --raw")}`,
+    );
   }
 
   // ── Wizard loop ───────────────────────────────────────────────────────────
   // `prev` is null on the first run, set to the previous round's values on edit.
 
   let prev: WizardState | null = null;
+  const warnedIgnoredVariantFlags = new Set<string>();
 
   while (true) {
     clearScreen();
@@ -171,7 +177,15 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
 
     let appName: string;
     if (cliArgsFull.appName && !isEdit) {
-      appName = cliArgsFull.appName;
+      const trimmed = cliArgsFull.appName.trim();
+      if (!/^[a-z0-9\-_]+$/.test(trimmed)) {
+        console.error(
+          `${red("✗")} Invalid project name: ${bold(trimmed)}\n` +
+            `  Use only lowercase letters, numbers, hyphens, underscores.`,
+        );
+        process.exit(1);
+      }
+      appName = trimmed;
       console.log(`${green("✓")} Project name: ${bold(appName)}`);
     } else {
       appName = await input({
@@ -179,8 +193,8 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
         default: prev?.appName ?? cliArgsFull.appName,
         validate: (v) => {
           if (!v.trim()) return "Name cannot be empty";
-          if (!/^[a-z0-9\-_]+$/i.test(v.trim()))
-            return "Use only letters, numbers, hyphens, underscores";
+          if (!/^[a-z0-9\-_]+$/.test(v.trim()))
+            return "Use only lowercase letters, numbers, hyphens, underscores";
           return true;
         },
       });
@@ -282,6 +296,19 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
       });
     }
 
+    const variantCliFlags = filterDynamicFlagsForVariant(
+      cliArgsFull.dynamicFlags,
+      selectedVariant,
+    );
+    for (const flag of variantCliFlags.ignoredFlags) {
+      const warningKey = `${selectedTemplate.id}:${selectedVariant.type}:${flag}`;
+      if (warnedIgnoredVariantFlags.has(warningKey)) continue;
+      warnedIgnoredVariantFlags.add(warningKey);
+      console.warn(
+        `${yellow("!")} Flag ignored for selected variant: ${gray(`--${flag}`)}`,
+      );
+    }
+
     // ── Step 4: Package manager ─────────────────────────────────────────────
 
     let selectedPm: PackageManager;
@@ -322,7 +349,7 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
 
     for (const param of extraParams) {
       const cliValue = param.wizardParameter
-        ? cliArgsFull.dynamicFlags.get(param.wizardParameter.default)
+        ? variantCliFlags.acceptedFlags.get(param.wizardParameter.default)
         : undefined;
 
       // CLI flag: always auto-accept (in both first run and edit mode)
@@ -393,6 +420,22 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
     const projectPath = dryRun
       ? `<target-dir>/${appName}`
       : join(targetDir, appName);
+
+    // ── Step 6b: Warn if target project path already exists ─────────────────
+
+    if (!dryRun && (await pathExists(projectPath))) {
+      console.log(
+        `\n${yellow("!")} Directory ${bold(projectPath)} already exists.`,
+      );
+      const proceed = await confirm({
+        message: "Continue anyway? (existing files may be overwritten)",
+        default: false,
+      });
+      if (!proceed) {
+        console.log(`\n${yellow("!")} Aborted.\n`);
+        return;
+      }
+    }
 
     // ── Step 7: Summary ─────────────────────────────────────────────────────
 
@@ -656,7 +699,7 @@ async function collectParam(
           if (!param.optional && !v.trim()) return "This field is required";
           if (param.allowedInputValues !== undefined) {
             const allowed = String(param.allowedInputValues);
-            if (!v.includes(allowed)) return `Must contain: ${allowed}`;
+            if (v.trim() !== allowed) return `Must be exactly: ${allowed}`;
           }
           return true;
         },

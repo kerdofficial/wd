@@ -9,6 +9,7 @@ import {
 } from "../config/manager";
 import { scanProjects } from "../core/scanner";
 import { listAllContainers, isDockerAvailable } from "../core/docker";
+import { isValidWorkspaceName } from "../core/workspace-names";
 import type {
   ProjectEntry,
   WorkspaceProject,
@@ -80,12 +81,13 @@ async function _workspaceEdit(name: string): Promise<void> {
     message: "Workspace name:",
     default: existing.name,
     validate: async (v) => {
-      if (!v.trim()) return "Name cannot be empty";
-      if (!/^[a-z0-9-_]+$/i.test(v.trim()))
-        return "Use only letters, numbers, hyphens, underscores";
-      const duplicate = await loadWorkspace(v.trim());
-      if (duplicate && v.trim() !== existing.name)
-        return `Workspace "${v.trim()}" already exists`;
+      const trimmed = v.trim();
+      if (!trimmed) return "Name cannot be empty";
+      if (trimmed !== existing.name && !isValidWorkspaceName(trimmed))
+        return "Use only lowercase letters, numbers, hyphens, underscores";
+      const duplicate = await loadWorkspace(trimmed);
+      if (duplicate && trimmed !== existing.name)
+        return `Workspace "${trimmed}" already exists`;
       return true;
     },
   });

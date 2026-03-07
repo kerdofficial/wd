@@ -1,5 +1,10 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
+import {
+  getRootExtraArgs,
+  getWorkspaceSubcommands,
+  getWorkspaceTailArgs,
+} from "./core/cli-routing";
 import { ShellOutput } from "./utils/shell";
 
 const program = new Command();
@@ -12,33 +17,28 @@ program
   .allowUnknownOption()
   .allowExcessArguments(true);
 
-// Flags that signal the user wants `wd new` without typing the subcommand
-const NEW_FLAGS = new Set([
-  "--template",
-  "--variant",
-  "--pm",
-  "--dir",
-  "--raw",
-  "--dry-run",
-  "-t",
-  "-v",
-  "--package-manager",
-]);
-function argvWantsNew(): boolean {
-  return process.argv.slice(2).some((a) => NEW_FLAGS.has(a));
-}
-
-// Default action: interactive project selector — or redirect to `wd new`
+// Default action: interactive project selector.
+// Any extra arguments mean the user mistyped a command — show a helpful error.
 program.action(async (options) => {
   const shellOut = new ShellOutput(options.shellOut as string | undefined);
-  if (argvWantsNew()) {
-    // User typed e.g. `wd my-app --template nextjs` without the `new` subcommand
-    const { newProject } = await import("./commands/new");
-    await newProject(shellOut);
-  } else {
-    const { select } = await import("./commands/select");
-    await select(shellOut);
+  const extraArgs = getRootExtraArgs(process.argv);
+
+  if (extraArgs.length > 0) {
+    console.error(`\nUnknown command: ${extraArgs.join(" ")}`);
+    console.error(`\nAvailable commands:`);
+    console.error(`  wd                  — interactive project selector`);
+    console.error(`  wd new <name>       — create a new project from a template`);
+    console.error(`  wd ws               — manage workspace profiles`);
+    console.error(`  wd open <name>      — open a workspace`);
+    console.error(`  wd scan             — rescan project directories`);
+    console.error(`  wd recent           — recently visited projects`);
+    console.error(`  wd setup            — configure wd`);
+    console.error(`  wd config           — manage settings`);
+    process.exit(1);
   }
+
+  const { select } = await import("./commands/select");
+  await select(shellOut);
 });
 
 // wd setup
@@ -117,6 +117,16 @@ program
 const ws = program.command("ws").description("Manage workspace profiles");
 
 ws.action(async (_, cmd) => {
+  const tailArgs = getWorkspaceTailArgs(process.argv);
+  if (tailArgs.length > 0) {
+    console.error(`\nUnknown workspace command: ${tailArgs.join(" ")}`);
+    console.error(`\nAvailable workspace commands:`);
+    for (const subcommand of getWorkspaceSubcommands()) {
+      console.error(`  wd ws ${subcommand}`);
+    }
+    process.exit(1);
+  }
+
   const { workspaceSelect } = await import("./commands/workspace-select");
   const shellOut = new ShellOutput(
     (cmd.parent as Command | undefined)?.opts().shellOut as string | undefined,

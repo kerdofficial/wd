@@ -57,6 +57,10 @@ async function testTemplateUrl(url: string): Promise<TestResult> {
 
     if (url.startsWith("file://")) {
       const filePath = url.slice("file://".length);
+      // Safety: must be an absolute path with no traversal segments
+      if (!filePath.startsWith("/") || filePath.split("/").includes("..")) {
+        return { ok: false, error: `Invalid file path: must be absolute with no '..' segments` };
+      }
       const file = Bun.file(filePath);
       if (!(await file.exists())) {
         return { ok: false, error: `File not found: ${filePath}` };
