@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name("wd-bin")
   .description("Workspace Director — fast project navigation")
-  .version("1.2.1")
+  .version("1.3.0")
   .option("--shell-out <path>", "internal: path to write shell commands")
   .allowUnknownOption()
   .allowExcessArguments(true);
