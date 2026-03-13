@@ -1,6 +1,6 @@
 # wd Usage Guide
 
-A practical walkthrough of everything `wd` can do, from first-time setup to advanced configuration.
+A practical walkthrough of everything `wd` can do, from first-time setup to project creation, workspace automation, and advanced configuration.
 
 ---
 
@@ -10,12 +10,16 @@ A practical walkthrough of everything `wd` can do, from first-time setup to adva
 - [Navigating to a project](#navigating-to-a-project)
 - [Recently visited projects](#recently-visited-projects)
 - [Rescanning projects](#rescanning-projects)
+- [Creating a project](#creating-a-project)
 - [Workspaces](#workspaces)
+  - [Interactive workspace management](#interactive-workspace-management)
   - [Creating a workspace](#creating-a-workspace)
   - [Opening a workspace](#opening-a-workspace)
   - [Editing a workspace](#editing-a-workspace)
+  - [Duplicating a workspace](#duplicating-a-workspace)
   - [Listing workspaces](#listing-workspaces)
   - [Deleting a workspace](#deleting-a-workspace)
+- [Managing configuration](#managing-configuration)
 - [Custom project types](#custom-project-types)
 - [Config file reference](#config-file-reference)
 - [Workspace file reference](#workspace-file-reference)
@@ -27,9 +31,9 @@ A practical walkthrough of everything `wd` can do, from first-time setup to adva
 
 ## First-time setup
 
-Run `wd setup` to configure the tool. The terminal clears and shows the `wd` header, then walks you through adding directories to scan.
+Run `wd setup` to configure the tool. The terminal clears and shows the `wd` header, then walks you through adding or removing directories to scan.
 
-```
+```text
 $ wd setup
 
 db   d8b   db d8888b.
@@ -45,28 +49,36 @@ What would you like to do?
   Done
 ```
 
+If you already have configured scan roots, setup lists them first and also lets you remove entries before saving.
+
 For each scan root, you provide:
 
-- **Path** — the directory to scan (e.g. `/Volumes/MyDrive/Developer/Work`)
-- **Label** — a short name shown in the project list (e.g. `Work`)
-- **Category** — used for grouping in output (e.g. `work`)
-- **Max depth** — how many directory levels deep to search for projects (default: 3)
+- **Path** — the directory to scan (for example `/Volumes/MyDrive/Developer/Work`)
+- **Label** — a short name shown in the project list (for example `Work`)
+- **Category** — a grouping label stored in config
+- **Max depth** — how many directory levels deep to search for projects (default: `3`)
 
 **Choosing max depth:**
 
-If your projects are directly inside the scan root (e.g. `Work/my-project/`), use depth `2`. If they are one level deeper (e.g. `Personal/Ongoing/my-project/`), use `3`.
+- If your projects are directly inside the scan root (for example `Work/my-project/`), use depth `2`.
+- If they are one level deeper (for example `Personal/Ongoing/my-project/`), use `3`.
 
-Once you finish adding roots, `wd` will scan immediately and show you how many projects were found.
+After saving the config, setup:
 
-At the end of setup, you will see instructions for shell integration. If you have not already added it, add this line to your `~/.zshrc`:
+- tries to copy the shell integration script to `~/.config/wd/wd.zsh`
+- offers to run an initial project scan immediately
+- creates `~/.config/wd/templates/`
+- creates a hidden example template in that directory if one does not exist yet
+
+At the end, add this line to your `~/.zshrc` if it is not already there:
 
 ```sh
 source ~/.config/wd/wd.zsh
 ```
 
-Then restart your shell or run `source ~/.zshrc`. After that, the `wd` command will work with proper directory changing.
+Then restart your shell or run `source ~/.zshrc`.
 
-> **Note on shell integration:** Without sourcing `wd.zsh`, the `wd-bin` binary still works but `cd` will not take effect in your current shell. This is a fundamental shell limitation — no child process can change the parent shell's directory. The `wd` function wraps the binary and handles this.
+> **Note on shell integration:** Without sourcing `wd.zsh`, the `wd-bin` binary still works but `cd` will not take effect in your current shell. This is a shell limitation: a child process cannot change the parent shell's directory. The `wd` function wraps the binary and applies the `cd` command for you.
 
 ---
 
@@ -76,11 +88,11 @@ Then restart your shell or run `source ~/.zshrc`. After that, the `wd` command w
 wd
 ```
 
-This opens an interactive fuzzy search over all your projects. Start typing to filter; the list narrows as you type. Use arrow keys to move, Enter to select.
+This opens an interactive fuzzy search over all your projects. Start typing to filter; the list narrows as you type. Use arrow keys to move and Enter to select.
 
-**What you see in the list:**
+**What you see in the list by default:**
 
-```
+```text
   my-app-web       Next.js    Work / my-app
   my-app-api       NestJS     Work / my-app
   blog-site        Next.js    Personal / Ongoing
@@ -88,19 +100,25 @@ This opens an interactive fuzzy search over all your projects. Start typing to f
   landing-page     Next.js    Work
 ```
 
-Each row shows: project name, detected type, and which scan root and parent directory it lives in.
+Each row can show:
+
+- project name
+- detected type badge
+- scan root label and parent directory
+
+The type badge and category column can be turned on or off later with `wd config`.
 
 **Fuzzy matching rules:**
 
-- All characters of your query must appear in the project name in order, but do not have to be consecutive
-- `maw` matches `my-app-web` (m...a...w)
-- Matches at word boundaries (after `-` or `/`) score higher than matches in the middle of a word
+- All characters of your query must appear in the project name in order, but do not have to be consecutive.
+- `maw` matches `my-app-web` (`m...a...w`).
+- Matches at word boundaries score higher than matches in the middle of a word.
 
 **Frecency ranking:**
 
-When you type nothing, projects are sorted by frecency (see [How frecency works](#how-frecency-works)). Projects you have visited recently and frequently appear at the top. On first use, the list is alphabetical.
+When you type nothing, projects are sorted by frecency. Projects you have visited recently and frequently appear at the top. On first use, the list is alphabetical.
 
-After selecting a project, `wd` changes your shell's working directory to that project. Your prompt will update to reflect the new location.
+After selecting a project, `wd` changes your shell's working directory to that project and records the visit in frecency history.
 
 ---
 
@@ -110,11 +128,11 @@ After selecting a project, `wd` changes your shell's working directory to that p
 wd recent
 ```
 
-Shows a ranked list of the projects you have visited most recently and frequently — up to 20 by default (configurable in `config.json`).
+Shows a ranked list of the projects you have visited most recently and frequently, up to `preferences.maxRecent` projects from `config.json` (`20` by default).
 
 The list includes the time since your last visit:
 
-```
+```text
   my-app-web      Next.js    2h ago
   blog-site       Next.js    5h ago
   design-system   React      2d ago
@@ -133,43 +151,207 @@ wd scan
 
 Scans all configured directories and rebuilds the project cache. Use this when:
 
-- You have created new projects since the last scan
-- You have deleted or moved projects
-- The cache seems out of date
+- you have created new projects since the last scan
+- you have deleted or moved projects
+- the cache seems out of date
 
 The cache is also refreshed automatically when you run `wd` or `wd recent` if the cache is older than 24 hours.
 
-After scanning, `wd scan` prints a summary:
+After scanning, `wd scan` prints a summary with:
 
+- number of scan roots
+- total project count
+- counts grouped by scan root label
+- counts grouped by detected project type
+
+It also refreshes the template cache in the background using the currently configured template source URL.
+
+---
+
+## Creating a project
+
+`wd new` is the Project Constructor. It creates a new project from a template, either fully interactively or by pre-filling some or all choices with CLI flags.
+
+```sh
+wd new
 ```
-Scanned 2 roots in 0.14s
-  Found 109 projects
 
-  Work          22 projects
-  Personal      87 projects
+You can also pass the project name as the first positional argument:
 
-  Types:
-    [Next.js]    18
-    [NestJS]      3
-    [Angular]     2
-    [Flutter]     2
-    [Tauri]       6
-    ...
+```sh
+wd new my-app
+```
+
+### Template sources
+
+`wd new` merges templates from two places:
+
+- the built-in remote template source
+- local custom template files in `~/.config/wd/templates/*.json`
+
+The remote source can be overridden with `projectConstructor.templates.gistUrl` in `config.json`, or via the `Templates URL` entry in `wd config`.
+
+Important behaviors:
+
+- `hidden: true` templates are loaded but not shown in the normal selection list
+- if a local template uses the same `id` as a remote template, `wd new` exits with a template ID collision error
+- remote templates are cached in `~/.config/wd/templates/template-cache.json`
+- if the remote source is unavailable but a matching cache exists, `wd new` warns and falls back to the cached template set
+- `--raw` forces a remote refresh instead of reusing the current cache
+
+### Wizard flow
+
+The normal interactive flow is:
+
+1. Project name
+2. Template
+3. Variant
+4. Package manager
+5. Additional template-specific parameters
+6. Target directory
+7. Summary and action choice: `Create`, `Edit`, or `Cancel`
+
+If you choose `Edit` from the summary screen, the wizard loops back with the previous selections pre-filled.
+
+### Validation and behavior
+
+- Project names must use only lowercase letters, numbers, hyphens, and underscores.
+- If a selected template has only one variant or one package manager, `wd new` auto-selects it.
+- If the final project path already exists, `wd new` asks whether to continue.
+- If the target directory itself does not exist, `wd new` asks whether to create it.
+- If you type a directory outside your configured scan roots in the directory picker, `wd new` offers to add it as a new scan root.
+- After a successful create, `wd new` changes into the new project directory and records the visit in frecency history.
+- If a post-create command fails, `wd new` shows the error and asks whether to continue anyway.
+- Unknown flags are warned about and ignored.
+- Dynamic flags that do not belong to the selected variant are warned about and ignored.
+
+### Directory picker
+
+Unless you pass `--dir`, `wd new` opens a directory picker for the target directory.
+
+Useful behaviors:
+
+- type to filter visible directories
+- press `Tab` to autocomplete the highlighted directory
+- type `@` to switch to scan-root matching mode
+- in `@` mode, use Left/Right to cycle through matching roots and `Tab` to insert the selected root path
+- pressing Enter on a typed path accepts it even if it is new
+
+### Flags
+
+| Flag | Meaning |
+| ---- | ------- |
+| `my-app` | Positional app name |
+| `--template <id>`, `-t <id>` | Pre-select a template by ID or name |
+| `--variant <type>`, `-v <type>` | Pre-select a template variant |
+| `--pm <name>`, `--package-manager <name>` | Pre-select the package manager |
+| `--dir <path>` | Skip the directory picker and use a target directory directly |
+| `--dry-run` | Show the interpolated create command and post-create commands without creating anything |
+| `--verbose` | Stream command output live instead of using the spinner UI |
+| `--raw` | Force-refresh remote templates instead of using the current template cache |
+
+### Dynamic template flags
+
+Templates can expose additional CLI flags through `wizardParameter` definitions.
+
+That gives you:
+
+- a long dynamic flag such as `--base-color zinc`
+- an optional shorthand such as `-bc zinc`
+
+These flags are template-defined, not global. Available dynamic flags depend on the selected variant.
+
+### Examples
+
+Fully interactive:
+
+```sh
+wd new
+```
+
+Partially pre-filled:
+
+```sh
+wd new my-app -t nextjs -v shadcn
+```
+
+Fully pre-filled:
+
+```sh
+wd new my-app -t nextjs -v shadcn --pm bun --dir ~/Developer/Work --base-color zinc
+```
+
+Dry run:
+
+```sh
+wd new my-app -t nextjs -v shadcn --pm bun --dry-run
+```
+
+Verbose command execution:
+
+```sh
+wd new my-app -t nextjs --verbose
+```
+
+### Example dry-run output
+
+```text
+Dry run summary:
+  Project:  my-app
+  Template: Next.js
+  Variant:  shadcn
+  Package:  bun
+
+  Command: bunx --bun create-next-app my-app --yes
+
+Dry run complete — no project was created.
 ```
 
 ---
 
 ## Workspaces
 
-A workspace is a named group of related projects. The main use case is when you regularly work on two projects together — like a frontend and a backend — and you want to jump to the right place, start your services, and have all your terminal tabs ready with a single command.
+A workspace is a named group of related projects. The main use case is when you regularly work on two or more projects together, like a frontend and a backend, and you want to jump to the right place, start services, and open your usual tabs with one command.
 
 A workspace stores:
 
-- Which projects are part of it
-- Which project is the "primary" (where `wd open` will `cd` to)
-- Which terminal tabs to open for each project, and what command to run in each
-- Which Docker containers to start (optional)
-- A docker-compose file to bring up (optional)
+- which projects are part of it
+- which project is the primary project
+- which terminal tabs to open for each project
+- which Docker containers to start, if any
+- which compose file to bring up, if any
+
+### Interactive workspace management
+
+```sh
+wd ws
+```
+
+Running `wd ws` without a subcommand opens an interactive workspace browser.
+
+The first screen shows all saved workspaces with:
+
+- workspace name
+- optional description
+- included projects
+- primary project marker
+- attached containers and compose file, if configured
+
+From the list:
+
+- press Enter to open the detail view for the selected workspace
+- press `o` on a selected workspace to open it immediately
+- choose `Back` or press Escape to exit
+
+The detail view offers these actions:
+
+- `Open`
+- `Edit`
+- `Duplicate`
+- `Delete`
+- `Back`
+
+This is the fastest way to inspect or manage workspaces when you do not want to remember exact names.
 
 ### Creating a workspace
 
@@ -181,29 +363,33 @@ You will be guided through:
 
 **1. Name and description**
 
-```
+```text
 Workspace name: my-app
 Description (optional): Frontend + API
 ```
 
-Names must be alphanumeric, hyphens and underscores are allowed. No spaces.
+Workspace names must use only lowercase letters, numbers, hyphens, and underscores. Spaces are not allowed.
+
+If a workspace with the same name already exists, creation is blocked.
 
 **2. Selecting projects**
 
-A checkbox list appears. Use **Space** to select projects, **Enter** to confirm. Multiple projects can be selected at once.
+A checkbox list appears. Use `Space` to select projects and `Enter` to confirm.
 
-```
+```text
 Select projects (Space to select, Enter to confirm):
   [ ] my-app-web    Next.js    Work / my-app
   [ ] my-app-api    NestJS     Work / my-app
   [ ] blog-site     Next.js    Personal / Ongoing
 ```
 
+At least one project must be selected.
+
 **3. Choosing the primary project**
 
-If you selected more than one project, you choose which one `wd open` will `cd` into. Usually this is the frontend.
+If you selected more than one project, you choose which one `wd open` will `cd` into.
 
-```
+```text
 Which is the primary project (where wd will cd)?
 > my-app-web
   my-app-api
@@ -211,44 +397,36 @@ Which is the primary project (where wd will cd)?
 
 **4. Tab configuration**
 
-For each project, you choose how many terminal tabs to open and what command to run in each. The first tab of the primary project is your current shell — any command you set there runs after the `cd`.
+For each project, you choose how many terminal tabs to open and what command to run in each tab.
 
-```
+```text
   my-app-web (primary)  /Volumes/MyDrive/Developer/Work/my-app-web
 
   How many tabs to open? (1 = just cd, 0 = skip): 3
     Tab 1 command: (this is your current shell)
     Tab 2 command: claude
     Tab 3 command: bun dev
-
-  my-app-api  /Volumes/MyDrive/Developer/Work/my-app-api
-
-  How many tabs to open? (1 = just cd, 0 = skip): 1
-    Tab 1 command: npm run start:dev
 ```
 
-Leave a command blank to open a tab that just `cd`s into the project without running anything.
+Rules:
 
-**5. Docker configuration (optional)**
+- `0` means do not open a tab for that project
+- `1` means one shell in that directory
+- leaving a tab command blank opens the tab and only changes directory
+- the first tab of the primary project is your current shell, not a newly opened tab
 
-If Docker is running, `wd` lists all your existing containers and lets you pick which ones to start when the workspace opens.
+**5. Docker configuration**
 
-```
-Configure Docker containers for this workspace? (y/N): y
+If Docker is available, `wd` can attach:
 
-Select containers to start when opening this workspace:
-  [ ] my-app-postgres-1    postgres:15    [exited]
-  [ ] my-app-redis-1       redis:7        [exited]
-  [ ] other-app-db-1       postgres:14    [running]
-```
+- named containers to start with `docker start`
+- a compose file to start with `docker compose up -d`
 
-Use Space to select, Enter to confirm.
-
-You can also attach a docker-compose file instead of (or in addition to) named containers. `wd` will suggest compose files it detected in your selected projects.
+For compose setup, `wd ws new` first suggests compose files it detected inside the selected projects. If you do not choose one, it lets you enter the path and filename manually.
 
 **6. Saving**
 
-The workspace is saved to `~/.config/wd/workspaces/my-app.json`.
+The workspace is saved as `~/.config/wd/workspaces/<name>.json`.
 
 ### Opening a workspace
 
@@ -258,49 +436,39 @@ wd open my-app
 
 This does the following:
 
-1. Starts any Docker containers attached to the workspace (`docker start <name>`)
-2. Runs `docker compose up -d` if a compose file is attached
-3. Changes your directory to the primary project
-4. Runs the first tab's command in the current shell (if set)
-5. Opens additional terminal tabs as configured, with their commands
+1. starts any attached Docker containers
+2. runs `docker compose up -d` if a compose file is attached
+3. changes your directory to the primary project
+4. runs the first tab command for the primary project in the current shell, if set
+5. opens any additional configured tabs
 
 Example output:
 
-```
+```text
 my-app — Frontend + API
-  🐳 Starting containers: my-app-postgres-1, my-app-redis-1... ✓
-  ✓ cd → my-app-web
-  ⇥ Opening tabs...
+  Starting containers: my-app-postgres-1, my-app-redis-1... done
+  cd → my-app-web
+  Opening tabs...
 ```
 
 **Docker port conflict resolution:**
 
-If a container fails to start because a port is already in use, `wd` detects which container is causing the conflict and offers to resolve it:
+If a container fails to start because a port is already in use, `wd` detects the blocking container and offers to stop it and retry.
 
-```
-  ! my-app-postgres-1 failed: port 5432 already in use by other-app-db-1
+If Docker is not running, `wd` warns and still performs the `cd`.
 
-  What to do?
-> Stop other-app-db-1 and retry my-app-postgres-1
-  Skip
-```
-
-If Docker is not running (OrbStack or Docker Desktop not started), `wd` warns you and still performs the `cd`.
-
-If a project path no longer exists (for example, if the drive is not mounted), `wd open` exits with a clear error message.
+If a project path no longer exists, `wd open` exits with a clear error.
 
 **Terminal tab support:**
 
-`wd` detects your terminal from the `$TERM_PROGRAM` environment variable and uses the appropriate method to open tabs:
+| Terminal | Method |
+| -------- | ------ |
+| iTerm2 | Native AppleScript API |
+| Terminal.app | AppleScript `do script` |
+| Ghostty | Keystroke simulation (`Cmd+T`) |
+| Warp | Keystroke simulation (`Cmd+T`) |
 
-| Terminal     | Method                       |
-| ------------ | ---------------------------- |
-| iTerm2       | Native AppleScript API       |
-| Terminal.app | AppleScript `do script`      |
-| Ghostty      | Keystroke simulation (Cmd+T) |
-| Warp         | Keystroke simulation (Cmd+T) |
-
-macOS will ask for Automation permission the first time `wd` tries to open tabs via AppleScript. Allow it in System Settings → Privacy & Security → Automation.
+macOS asks for Automation permission the first time `wd` opens tabs with AppleScript.
 
 ### Editing a workspace
 
@@ -308,18 +476,42 @@ macOS will ask for Automation permission the first time `wd` tries to open tabs 
 wd ws edit <name>
 ```
 
-Opens the same wizard as `wd ws new`, but with all fields pre-filled from the existing workspace. Tab-complete the workspace name after `ws edit`.
+This opens the same wizard as `wd ws new`, but pre-fills it with the existing workspace values.
 
-Every step works the same as creation, with these differences:
+Important differences from creation:
 
-- **Name** — editable; if you change it, the old workspace file is deleted and a new one is saved under the new name
-- **Projects** — currently selected projects are pre-checked in the checkbox list; you can add or remove freely
-- **Primary project** — the current primary is pre-selected; if you removed it from the project list, the first selected project is used as the default
-- **Tab configuration** — existing tab counts and commands are pre-filled as defaults; just press Enter to keep them
-- **Docker containers** — currently attached containers are pre-checked; the Docker section defaults to open if the workspace already has Docker config
-- **Compose file** — current compose config is offered as the first option in the list
+- the name is editable
+- if you rename the workspace, the old file is deleted and the new name is saved instead
+- selected projects are pre-checked
+- the current primary project is pre-selected if it is still present
+- tab counts and commands are pre-filled
+- attached containers are pre-checked
+- the current compose config is offered first in the compose suggestions list
+- if you remove a project, its old tab configuration is discarded
 
-If you removed a project from the workspace, its tab configuration is discarded. If you added a new project, its tab configuration starts fresh.
+The same lowercase-only name validation applies here too, and the new name must not collide with an existing workspace.
+
+### Duplicating a workspace
+
+```sh
+wd ws duplicate <name>
+```
+
+Duplicates an existing workspace under a new name.
+
+Default name generation works like this:
+
+- `my-app` → `my-app-duplicate`
+- if that already exists: `my-app-duplicate-2`
+- then `my-app-duplicate-3`, and so on
+
+The duplicate flow asks for the new name and then offers:
+
+- `Save & Exit`
+- `Edit Workspace`
+- `Cancel`
+
+If you choose `Edit Workspace`, the duplicated workspace is saved first and then opened in the normal edit wizard.
 
 ### Listing workspaces
 
@@ -327,21 +519,23 @@ If you removed a project from the workspace, its tab configuration is discarded.
 wd ws list
 ```
 
-Shows all saved workspaces with their projects and Docker configuration:
+Shows all saved workspaces with their projects and Docker configuration.
 
-```
+Example output:
+
+```text
 Workspaces
 
   my-app
     Frontend + API
-    -> my-app-web  (primary)  3 tabs
-    -> my-app-api             1 tab
-    Containers: my-app-postgres-1, my-app-redis-1
+    → my-app-web (primary)
+    → my-app-api
+    🐳 Containers: my-app-postgres-1, my-app-redis-1
 
   blog
-    -> blog-site  (primary)
-    -> blog-api
-    Compose: docker-compose.local.yaml in blog-api
+    → blog-site (primary)
+    → blog-api
+    🐳 Compose: docker-compose.local.yaml in blog-api
 ```
 
 ### Deleting a workspace
@@ -352,20 +546,137 @@ wd ws delete my-app
 
 Removes the workspace definition file. Your projects and Docker containers are unaffected.
 
+You can also delete a workspace from the interactive `wd ws` detail view.
+
+---
+
+## Managing configuration
+
+```sh
+wd config
+```
+
+`wd config` opens an interactive configuration menu. It is the main way to manage `wd` after the first setup.
+
+Main menu entries:
+
+- `Scan roots`
+- `Custom project types`
+- `Show project type badge`
+- `Show category`
+- `Max recent projects`
+- `Scan ignore list`
+- `Templates URL`
+
+### Scan roots
+
+This section lets you add or remove scan roots without re-running `wd setup`.
+
+Adding a scan root asks for:
+
+- directory path
+- label
+- category
+- max scan depth
+
+Validation rules:
+
+- path must exist
+- path must be a directory
+- the same path cannot be added twice
+
+### Custom project types
+
+This section lets you add, edit, or remove custom project detection rules.
+
+Each custom type has:
+
+- `name`
+- `markers`
+- `patterns`
+- `color`
+
+Rules:
+
+- at least one marker or pattern is required
+- regex patterns are validated before saving
+- a preview is shown before final confirmation
+
+### Show project type badge
+
+Toggles whether selectors show the `[TypeName]` badge next to projects.
+
+### Show category
+
+Toggles whether selectors show the scan-root label / location column next to projects.
+
+### Max recent projects
+
+Sets how many recent projects `wd recent` keeps and displays.
+
+Valid range: `1` to `50`.
+
+### Scan ignore list
+
+Controls which directory names are skipped during scanning.
+
+Available actions:
+
+- add an entry
+- remove an entry
+- press `e` to open the whole list in your editor
+
+When using the editor flow:
+
+- one entry per line
+- empty lines are ignored
+- changes are shown as additions and removals before saving
+- an empty final list is rejected
+
+### Templates URL
+
+Controls the remote source for built-in project templates used by `wd new`.
+
+Supported URL formats:
+
+- `https://...`
+- `file:///absolute/path/to/templates.json`
+
+Available actions:
+
+- set a custom URL
+- test the current URL
+- reset back to the built-in default
+
+Before saving a new URL, `wd config` tests it and reports:
+
+- whether the source was reachable
+- how many valid templates were found
+- validation errors for invalid templates when relevant
+
+`file://` rules:
+
+- the path must be absolute
+- the path must not contain `..`
+- the file must exist
+
+If the test fails, you can still choose whether to save the URL anyway.
+
 ---
 
 ## Custom project types
 
-By default, `wd` recognizes these project types: Next.js, NestJS, Angular, Flutter, Swift, Rust, Tauri, Bun, Node, Python.
+By default, `wd` recognizes these built-in project types: Next.js, NestJS, Angular, Flutter, Swift, Rust, Tauri, React, Vue, Bun, Node, Python.
 
-If you work with a framework that is not in this list, you can define your own detection rules in `~/.config/wd/config.json`.
+If you work with a framework that is not in this list, define your own detection rules in `wd config` or by editing `~/.config/wd/config.json`.
 
-Add a `customTypes` array:
+Example:
 
 ```json
 {
   "version": 1,
-  "scanRoots": [...],
+  "configVersion": 1,
+  "scanRoots": [],
   "customTypes": [
     {
       "name": "Django",
@@ -378,44 +689,65 @@ Add a `customTypes` array:
       "markers": ["artisan"],
       "patterns": ["^composer\\.json$"],
       "color": "red"
-    },
-    {
-      "name": "Elixir",
-      "markers": [],
-      "patterns": ["^mix\\.exs$"],
-      "color": "magenta"
     }
-  ]
+  ],
+  "preferences": {
+    "showProjectType": true,
+    "showCategory": true,
+    "maxRecent": 20,
+    "scanIgnore": [
+      "node_modules",
+      ".git",
+      "dist",
+      "build",
+      ".next",
+      ".angular",
+      "target",
+      ".dart_tool",
+      "Pods",
+      ".build",
+      "DerivedData",
+      ".cache"
+    ]
+  },
+  "projectConstructor": {
+    "templates": {
+      "gistUrl": ""
+    }
+  }
 }
 ```
 
 **Fields:**
 
-| Field      | Type     | Description                                                                                    |
-| ---------- | -------- | ---------------------------------------------------------------------------------------------- |
-| `name`     | string   | Display name shown in the project list                                                         |
-| `markers`  | string[] | Exact filenames that must exist in the project root                                            |
-| `patterns` | string[] | Regular expressions matched against filenames in the project root                              |
-| `color`    | string   | Color for the type badge: `cyan`, `green`, `yellow`, `blue`, `magenta`, `red`, `gray`, `white` |
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `name` | string | Display name shown in the project list |
+| `markers` | string[] | Exact filenames that must exist in the project root |
+| `patterns` | string[] | Regular expressions matched against filenames in the project root |
+| `color` | string | Badge color: `cyan`, `green`, `yellow`, `blue`, `magenta`, `red`, `gray`, `white` |
 
 **Matching logic:**
 
-- If `markers` is non-empty, all listed files must exist
-- If `patterns` is non-empty, at least one must match a filename in the directory
-- Both can be combined: markers must all match AND at least one pattern must match
-- Custom types are checked after all built-in types, so they have lower priority
+- if `markers` is non-empty, all listed files must exist
+- if `patterns` is non-empty, at least one pattern must match
+- if both are present, both conditions must pass
+- custom types are checked after built-in types, so built-ins win if both match
 
-After editing `config.json`, run `wd scan` to rebuild the cache with the new rules.
+After changing custom types, run `wd scan` to rebuild the cache.
 
 ---
 
 ## Config file reference
 
-The main config file is `~/.config/wd/config.json`. It is created and managed by `wd setup`, but you can also edit it directly.
+The main config file is `~/.config/wd/config.json`. It is created by `wd setup` and managed by `wd config`, but you can also edit it directly.
+
+Example:
 
 ```json
 {
   "version": 1,
+  "configVersion": 1,
   "scanRoots": [
     {
       "path": "/Volumes/MyDrive/Developer/Work",
@@ -449,37 +781,68 @@ The main config file is `~/.config/wd/config.json`. It is created and managed by
       "DerivedData",
       ".cache"
     ]
+  },
+  "projectConstructor": {
+    "templates": {
+      "gistUrl": ""
+    }
   }
 }
 ```
 
-**`scanRoots`** — directories to scan for projects
+### Top-level fields
 
-| Field      | Default          | Description                               |
-| ---------- | ---------------- | ----------------------------------------- |
-| `path`     | required         | Absolute path to scan                     |
-| `label`    | directory name   | Shown in the project list                 |
-| `category` | label lowercased | Used for grouping                         |
-| `maxDepth` | 3                | How many levels deep to look for projects |
+| Field | Default | Description |
+| ----- | ------- | ----------- |
+| `version` | `1` | Config schema version |
+| `configVersion` | `0` or higher | Silent migration version applied to the config |
+| `scanRoots` | `[]` | Directories to scan for projects |
+| `customTypes` | `[]` | Custom project detection rules |
+| `preferences` | object | UI and scanning preferences |
+| `projectConstructor` | object | Template source settings for `wd new` |
 
-**`preferences`**
+### `scanRoots[]`
 
-| Field             | Default   | Description                                     |
-| ----------------- | --------- | ----------------------------------------------- |
-| `showProjectType` | true      | Show the `[Next.js]` badge in the project list  |
-| `showCategory`    | true      | Show the scan root label in the project list    |
-| `maxRecent`       | 20        | Maximum number of projects shown in `wd recent` |
-| `scanIgnore`      | see above | Directory names to skip during scanning         |
+| Field | Default | Description |
+| ----- | ------- | ----------- |
+| `path` | required | Absolute path to scan |
+| `label` | directory name | Label shown in selectors and scan summaries |
+| `category` | label lowercased | Stored grouping value |
+| `maxDepth` | `3` | How many levels deep to scan |
 
-**Adding directories to `scanIgnore`:**
+### `preferences`
 
-If scanning is slow, or if `wd` is picking up directories that are not projects, add their names to `scanIgnore`. Names are matched against directory entries, not full paths — so `"build"` will skip any directory named `build` anywhere in the scan.
+| Field | Default | Description |
+| ----- | ------- | ----------- |
+| `showProjectType` | `true` | Show the project type badge in selectors |
+| `showCategory` | `true` | Show the location/category column in selectors |
+| `maxRecent` | `20` | Maximum number of projects shown by `wd recent` |
+| `scanIgnore` | see default list above | Directory names to skip during scanning |
+
+**About `scanIgnore`:**
+
+Entries are matched against directory entry names, not full paths. For example, `"build"` skips any directory named `build` anywhere inside a scan root.
+
+### `projectConstructor.templates`
+
+| Field | Default | Description |
+| ----- | ------- | ----------- |
+| `gistUrl` | `""` | Optional override for the remote template source used by `wd new` |
+
+### Related files under `~/.config/wd/`
+
+| Path | Purpose |
+| ---- | ------- |
+| `templates/*.json` | Local custom templates loaded by `wd new` |
+| `templates/template-cache.json` | Cached remote templates used for offline fallback and normal loads |
 
 ---
 
 ## Workspace file reference
 
-Workspace files live in `~/.config/wd/workspaces/<name>.json`. They are created by `wd ws new` but can be edited manually.
+Workspace files live in `~/.config/wd/workspaces/<name>.json`. They are created by `wd ws new`, `wd ws duplicate`, or `wd ws edit`, but can also be edited manually.
+
+Example:
 
 ```json
 {
@@ -499,77 +862,87 @@ Workspace files live in `~/.config/wd/workspaces/<name>.json`. They are created 
     }
   ],
   "docker": {
-    "containers": ["my-app-postgres-1", "my-app-redis-1"]
+    "containers": ["my-app-postgres-1", "my-app-redis-1"],
+    "compose": {
+      "path": "/Volumes/MyDrive/Developer/Work/my-app-api",
+      "file": "docker-compose.yml"
+    }
   }
 }
 ```
 
-**`projects[].tabs`** — array of tabs to open for this project
+### Fields
 
-Each tab opens in the project's directory. `command` is optional — if omitted or null, the tab just `cd`s into the directory without running anything.
+| Field | Description |
+| ----- | ----------- |
+| `version` | Workspace schema version (`2` for newly saved workspaces) |
+| `name` | Workspace name |
+| `description` | Optional human-readable description |
+| `projects[]` | Included projects and their tab setup |
+| `docker.containers[]` | Named containers to start |
+| `docker.compose` | Optional compose file configuration |
 
-The first tab of the primary project is special: instead of opening a new terminal tab, its command runs directly in your current shell after the `cd`. This is how the primary shell gets its startup command (e.g. `bun dev`).
+### `projects[].tabs`
 
-**`docker.containers`** — named containers to `docker start` when opening the workspace.
+Each tab opens in that project's directory.
 
-**`docker.compose`** — optional docker-compose configuration:
-
-```json
-"compose": {
-  "path": "/Volumes/MyDrive/Developer/Work/my-app-api",
-  "file": "docker-compose.yml"
-}
-```
+- if `command` is missing or empty, the tab only changes directory
+- the first tab of the primary project is special: its command runs in your current shell after the `cd`
+- other tabs are opened as new terminal tabs
 
 ---
 
 ## How frecency works
 
-Frecency combines frequency (how often you visit a project) and recency (how recently you visited it). Each visit is stored with a timestamp. When ranking, each visit earns points based on how recent it is:
+Frecency combines frequency and recency. Each visit stores a timestamp. When ranking projects, recent visits are worth more than older ones.
 
-| Age of visit  | Points |
-| ------------- | ------ |
-| Last 4 hours  | 100    |
-| Last 24 hours | 80     |
-| Last 3 days   | 60     |
-| Last week     | 40     |
-| Last 2 weeks  | 20     |
-| Last month    | 10     |
-| Older         | 2      |
+| Age of visit | Points |
+| ------------ | ------ |
+| Last 4 hours | 100 |
+| Last 24 hours | 80 |
+| Last 3 days | 60 |
+| Last week | 40 |
+| Last 2 weeks | 20 |
+| Last month | 10 |
+| Older | 2 |
 
-A project's total score is the sum of all its visits' points. The project you opened this morning and last week will score higher than a project you opened only once last month.
+A project's total score is the sum of its visit scores.
 
-Visit records older than 90 days are automatically pruned. Each project stores at most 50 visit timestamps.
+Additional rules:
 
-The history file is `~/.config/wd/history.json`. You can delete it to reset frecency entirely.
+- visit records older than 90 days are pruned
+- each project stores at most 50 visit timestamps
+- `wd`, `wd recent`, and successful `wd new` navigation all feed the same history file
+
+The history file is `~/.config/wd/history.json`. Delete it to reset frecency completely.
 
 ---
 
 ## How project detection works
 
-When `wd` scans a directory, it looks at the files directly inside it (not recursively) and tries to match them against detection rules. The first rule that matches wins.
+When `wd` scans a directory, it looks at the files directly inside it and tries to match them against detection rules. The first rule that matches wins.
 
-**Built-in detection rules (in priority order):**
+**Built-in detection rules (priority order):**
 
-| Type    | Detected by                                              |
-| ------- | -------------------------------------------------------- |
-| Tauri   | `src-tauri/` directory exists                            |
-| Flutter | `pubspec.yaml` exists                                    |
-| Swift   | `*.xcodeproj`, `*.xcworkspace`, or `Package.swift`       |
-| Rust    | `Cargo.toml`                                             |
-| Angular | `angular.json`                                           |
-| NestJS  | `nest-cli.json`                                          |
+| Type | Detected by |
+| ---- | ----------- |
+| Tauri | `src-tauri/` directory exists |
+| Flutter | `pubspec.yaml` exists |
+| Swift | `*.xcodeproj`, `*.xcworkspace`, or `Package.swift` |
+| Rust | `Cargo.toml` |
+| Angular | `angular.json` |
+| NestJS | `nest-cli.json` |
 | Next.js | `next.config.ts`, `next.config.js`, or `next.config.mjs` |
-| Bun     | `bunfig.toml`                                            |
-| Node    | `package.json`                                           |
-| Python  | `pyproject.toml`, `setup.py`, or `requirements.txt`      |
-| unknown | (none of the above matched)                              |
+| Bun | `bunfig.toml` |
+| Node | `package.json` |
+| Python | `pyproject.toml`, `setup.py`, or `requirements.txt` |
+| unknown | none of the above |
 
-A directory is recognized as a project at all if it contains any of the above markers, a `.git` directory, or markers from your custom types. If none of these are present, the directory is treated as a container (like `Personal/Ongoing/`) and `wd` recurses into it looking for projects.
+A directory is recognized as a project at all if it contains any built-in marker, a `.git` directory, or markers from your custom types. Otherwise, `wd` treats it as a container directory and keeps recursing until `maxDepth` is reached.
 
-This is why `maxDepth` matters: a directory like `Personal/Ongoing/my-project/` needs at least depth 3 to be found when scanning from `Personal/`.
+This is why `maxDepth` matters. A project at `Personal/Ongoing/my-project/` needs a scan depth of at least `3` when scanning from `Personal/`.
 
-**Custom types** are checked after all built-in rules, so a project that contains both `manage.py` and `package.json` will be classified as `Node` (since `package.json` is a built-in marker), not `Django`. To change this behavior, you would need to remove the project from the Node category by ensuring it does not match any higher-priority rule — which is not currently possible to override on a per-project basis.
+Custom types are checked after built-in types, so they cannot override a built-in match.
 
 ---
 
@@ -583,57 +956,83 @@ The shell integration is not active. Make sure your `~/.zshrc` contains:
 source ~/.config/wd/wd.zsh
 ```
 
-And that you have reloaded your shell (`source ~/.zshrc` or open a new tab).
+Then reload your shell.
 
 **`wd-bin: command not found`**
 
-The binary is not on your PATH. Check that `~/.local/bin` is in your `$PATH` and that the symlink exists:
+The binary is not on your `PATH`. Check that your symlink exists:
 
 ```sh
 ls -la ~/.local/bin/wd-bin
 ```
 
-If missing, re-run the symlink step from the installation instructions.
-
 **`wd is not configured yet`**
 
-You need to run `wd setup` first to create the config file.
+Run `wd setup` first. `wd config` and other config-backed commands expect `~/.config/wd/config.json` to exist.
 
 **Projects are missing from the list**
 
-Run `wd scan` to refresh the cache. If projects are still missing, check:
+Run `wd scan` and then check:
 
-- Is the directory inside a configured scan root?
-- Does the project have any marker files (`package.json`, `pubspec.yaml`, etc.)?
-- Is the directory name in `scanIgnore`?
-- Is `maxDepth` deep enough for your directory structure?
+- is the directory inside a configured scan root?
+- does the project contain a recognized marker file?
+- is one of its parent directories filtered by `scanIgnore`?
+- is `maxDepth` high enough?
 
-**The drive is not mounted**
+**`wd new` says no templates were found**
 
-If your projects live on an external drive that is not currently mounted, `wd` will warn you during scan but continue with any other accessible roots. The cached entries from the unmounted drive remain in the list but will fail with an error if you try to navigate to them.
+Check:
+
+- whether your configured template URL is reachable
+- whether your local templates in `~/.config/wd/templates/` are valid JSON
+- whether all available templates are marked `hidden: true`
+
+You can reset the remote source from `wd config` under `Templates URL`.
+
+**`wd new` says the template cache is stale**
+
+This means the remote template source could not be refreshed and `wd` fell back to the last cached copy. That is safe for normal use, but you may be missing newer templates until the source becomes reachable again.
+
+Use `wd new --raw` after connectivity is restored to force a refresh.
+
+**Template URL testing fails for `file://` paths**
+
+For local template sources:
+
+- the path must be absolute
+- the path must not contain `..`
+- the file must exist
+- the JSON must be either an array of templates or an object with a `templates` array
+
+**Workspace name already exists**
+
+Workspace names must be unique. Use `wd ws list` to see existing names, then choose another name or duplicate and rename from there.
+
+**Unknown command or unknown workspace command**
+
+Recent versions of `wd` print a helpful command list instead of silently falling back to the main selector. If you see this, double-check the command spelling and available subcommands.
 
 **Docker containers are not starting**
 
-- Make sure OrbStack or Docker Desktop is running before you run `wd open`
-- Check that the container names in your workspace match the actual container names (`docker ps -a`)
-- Container names can change when you recreate them — update the workspace with `wd ws edit <name>` to reselect the right containers
-- If a container fails due to a port conflict, `wd` will detect this and offer to stop the blocking container interactively
+- make sure OrbStack or Docker Desktop is running
+- make sure the container names in the workspace still match `docker ps -a`
+- if a container fails because of a port conflict, `wd` can offer to stop the blocking container and retry
 
 **Tabs are not opening**
 
-- `wd` uses AppleScript (`osascript`) to open tabs — macOS will prompt for Automation permission the first time. Allow it in System Settings → Privacy & Security → Automation.
-- Ghostty and Warp use keystroke simulation rather than a native API. This is less reliable if the terminal loses focus during the operation. If tabs are not appearing, try keeping the terminal focused while `wd open` runs.
-- Tabs are only opened if at least one project in the workspace has a `tabs` array with entries.
+- `wd` uses AppleScript and macOS Automation permissions for tab opening
+- Ghostty and Warp rely on keystroke simulation, which is less reliable if the terminal loses focus
+- tabs only open for workspace projects that actually have tab entries configured
 
-**`wd open` changed directory but my editor is still in the old place**
+**`wd open` changed directory but my editor stayed in the old place**
 
-`wd open` only changes the directory in the terminal tab where you ran it. If you want your editor to open the project, open it manually after navigating (`cursor .`, `code .`, etc.).
+`wd open` only changes the terminal shell directory. Open your editor manually in the new project if needed.
 
 **The project list is slow to appear**
 
-The cache may be rebuilding. This happens when:
+The cache may be rebuilding because:
 
-- The cache is older than 24 hours
-- The cache file does not exist
+- the cache is older than 24 hours
+- the cache file does not exist
 
-If rebuilding consistently takes more than a second or two, check if any of your scan roots contain very large numbers of directories. Add commonly large directories like `node_modules` to `scanIgnore` (it is there by default, but nested `node_modules` inside unusual structures might not be caught).
+If this keeps happening, reduce scan size by lowering `maxDepth` or adding more names to `scanIgnore`.

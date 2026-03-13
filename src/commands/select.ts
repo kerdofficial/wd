@@ -1,4 +1,5 @@
-import { search } from "@inquirer/prompts";
+import projectSearch from "../ui/project-search";
+import { dirname } from "node:path";
 import {
   loadCache,
   loadHistory,
@@ -61,7 +62,7 @@ async function _select(shellOutput: ShellOutput): Promise<void> {
   const history = await loadHistory();
   const allProjects = cache.projects;
 
-  const selectedPath = await search({
+  const result = await projectSearch({
     message: "Select a project",
     source: async (input) => {
       const results = filterAndRank(allProjects, input ?? "", history);
@@ -70,19 +71,21 @@ async function _select(shellOutput: ShellOutput): Promise<void> {
     pageSize: 15,
   });
 
-  // Validate the path still exists
-  if (!(await pathExists(selectedPath))) {
+  const targetPath = result.parentDir ? dirname(result.path) : result.path;
+
+  // Validate the target path still exists
+  if (!(await pathExists(targetPath))) {
     console.error(
-      `\nProject path does not exist: ${selectedPath}\nThe drive may not be mounted. Run 'wd scan' to refresh.`
+      `\nPath does not exist: ${targetPath}\nThe drive may not be mounted. Run 'wd scan' to refresh.`
     );
     process.exit(1);
   }
 
-  // Record visit
-  const updatedHistory = recordVisit(history, selectedPath);
+  // Record visit against the project path (not the parent dir)
+  const updatedHistory = recordVisit(history, result.path);
   await saveHistory(updatedHistory);
 
   // Output cd command
-  shellOutput.cd(selectedPath);
+  shellOutput.cd(targetPath);
   await shellOutput.flush();
 }

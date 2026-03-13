@@ -14,4 +14,11 @@ export const paths = {
   workspace(name: string): string {
     return join(CONFIG_DIR, "workspaces", `${name}.json`);
   },
+
+  templateCache: join(CONFIG_DIR, "templates", "template-cache.json"),
+  templatesDir: join(CONFIG_DIR, "templates"),
+
+  template(name: string): string {
+    return join(CONFIG_DIR, "templates", `${name}.json`);
+  },
 } as const;

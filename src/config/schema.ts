@@ -14,13 +14,20 @@ export type ScanRoot = z.infer<typeof ScanRootSchema>;
 // ─── Custom project types ─────────────────────────────────────────────────────
 
 export const CustomTypeColorSchema = z.enum([
-  "cyan", "green", "yellow", "blue", "magenta", "red", "gray", "white",
+  "cyan",
+  "green",
+  "yellow",
+  "blue",
+  "magenta",
+  "red",
+  "gray",
+  "white",
 ]);
 
 export const CustomTypeSchema = z.object({
-  name: z.string(),                            // Display name, e.g. "Django"
-  markers: z.array(z.string()).default([]),    // Files that must exist, e.g. ["manage.py"]
-  patterns: z.array(z.string()).default([]),   // Regex strings, e.g. ["^Gemfile$"]
+  name: z.string(), // Display name, e.g. "Django"
+  markers: z.array(z.string()).default([]), // Files that must exist, e.g. ["manage.py"]
+  patterns: z.array(z.string()).default([]), // Regex strings, e.g. ["^Gemfile$"]
   color: CustomTypeColorSchema.default("cyan"),
 });
 
@@ -31,6 +38,11 @@ export type CustomTypeColor = z.infer<typeof CustomTypeColorSchema>;
 
 export const ConfigSchema = z.object({
   version: z.literal(1),
+  /**
+   * Migration version: tracks which silent config migrations have been applied.
+   * Default 0 means no migrations have run yet.
+   */
+  configVersion: z.number().default(0),
   scanRoots: z.array(ScanRootSchema).default([]),
   customTypes: z.array(CustomTypeSchema).default([]),
   preferences: z
@@ -56,6 +68,19 @@ export const ConfigSchema = z.object({
         ]),
     })
     .default({}),
+  projectConstructor: z
+    .object({
+      templates: z
+        .object({
+          /**
+           * URL for fetching built-in templates.
+           * Supports https:// (gist/raw JSON) and file:// (local path).
+           */
+          gistUrl: z.string().default(""),
+        })
+        .default({}),
+    })
+    .default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -68,8 +93,19 @@ export type ProjectType = string;
 
 // The built-in type IDs (for display lookup)
 export const BUILTIN_PROJECT_TYPES = [
-  "nextjs", "nestjs", "angular", "flutter", "tauri", "swift",
-  "rust", "react", "vue", "node", "python", "bun", "unknown",
+  "nextjs",
+  "nestjs",
+  "angular",
+  "flutter",
+  "tauri",
+  "swift",
+  "rust",
+  "react",
+  "vue",
+  "node",
+  "python",
+  "bun",
+  "unknown",
 ] as const;
 export type BuiltinProjectType = (typeof BUILTIN_PROJECT_TYPES)[number];
 
@@ -112,6 +148,62 @@ export const HistorySchema = z.object({
 
 export type History = z.infer<typeof HistorySchema>;
 export type HistoryEntry = z.infer<typeof HistoryEntrySchema>;
+
+// ─── Templates ───────────────────────────────────────────────────────────────
+
+export const PackageManagerSchema = z.object({
+  name: z.string(),
+  command: z.string(), // e.g. "bunx --bun", "pnpm dlx"
+  commandParam: z.string(), // e.g. "bun", "npm"
+});
+
+export const WizardParameterSchema = z.object({
+  default: z.string(), // long flag name: "base-color"
+  shorthand: z.string(), // short flag: "bc"
+});
+
+export const AdditionalParameterSchema = z.object({
+  id: z.string(),
+  wizardParameter: WizardParameterSchema.optional(),
+  optional: z.boolean(),
+  description: z.string(),
+  type: z.enum(["select", "multi-select", "input"]),
+  multiSelectDivider: z.string().optional(),
+  allowedInputValues: z.union([z.string(), z.number(), z.boolean()]).optional(),
+  options: z.array(z.string()).optional(),
+  parameterKey: z.string(), // interpolation key: "BASE_COLOR"
+});
+
+export const VariantSchema = z.object({
+  type: z.string(), // "default" always present
+  name: z.string(),
+  command: z.string(), // shell command with placeholders
+  supportedPackageManagers: z.array(PackageManagerSchema).min(1),
+  additionalParameters: z.array(AdditionalParameterSchema).optional(),
+  postCreateCommands: z.array(z.string()).optional(),
+});
+
+export const TemplateSchema = z.object({
+  id: z.string(),
+  hidden: z.boolean().default(false),
+  name: z.string(),
+  description: z.string().optional(),
+  variants: z.array(VariantSchema).min(1),
+});
+
+export const TemplateCacheSchema = z.object({
+  version: z.literal(1),
+  lastFetch: z.string(),
+  gistUrl: z.string(),
+  templates: z.array(TemplateSchema),
+});
+
+export type PackageManager = z.infer<typeof PackageManagerSchema>;
+export type WizardParameter = z.infer<typeof WizardParameterSchema>;
+export type AdditionalParameter = z.infer<typeof AdditionalParameterSchema>;
+export type Variant = z.infer<typeof VariantSchema>;
+export type Template = z.infer<typeof TemplateSchema>;
+export type TemplateCache = z.infer<typeof TemplateCacheSchema>;
 
 // ─── Workspace ───────────────────────────────────────────────────────────────
 

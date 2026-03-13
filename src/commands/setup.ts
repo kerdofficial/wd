@@ -1,62 +1,20 @@
-import { input, select, confirm, number } from "@inquirer/prompts";
+import { select, confirm, number } from "@inquirer/prompts";
 import { mkdir } from "node:fs/promises";
 import { loadConfig, saveConfig, initConfigDir } from "../config/manager";
 import { scanProjects } from "../core/scanner";
 import { saveCache } from "../config/manager";
-import type { Cache, Config, ScanRoot } from "../config/schema";
-import { pathExists, isDirectory } from "../utils/fs";
+import type { Cache, Config } from "../config/schema";
 import { bold, green, yellow, gray, cyan, Spinner, printHeader, clearScreen } from "../ui/format";
 import { gracefulRun } from "../utils/prompt-wrapper";
 import { paths } from "../config/paths";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, existsSync } from "node:fs";
+import { addScanRoot } from "../utils/scan-root-prompt";
 
 async function installShellScript(): Promise<void> {
   // Copy shell/wd.zsh to ~/.config/wd/wd.zsh
   const srcPath = new URL("../../shell/wd.zsh", import.meta.url).pathname;
   const content = readFileSync(srcPath, "utf-8");
   await Bun.write(paths.shellScript, content);
-}
-
-async function addScanRoot(existing: ScanRoot[]): Promise<ScanRoot | null> {
-  console.log();
-  const rawPath = await input({
-    message: "Directory path to scan:",
-    validate: async (val) => {
-      if (!val.trim()) return "Path cannot be empty";
-      if (!(await pathExists(val.trim()))) return `Path does not exist: ${val}`;
-      if (!(await isDirectory(val.trim()))) return `Not a directory: ${val}`;
-      if (existing.some((r) => r.path === val.trim())) return "Already added";
-      return true;
-    },
-  });
-
-  const dirPath = rawPath.trim();
-  const defaultLabel = dirPath.split("/").at(-1) ?? "Projects";
-
-  const label = await input({
-    message: "Label for this root:",
-    default: defaultLabel,
-  });
-
-  const category = await input({
-    message: "Category (for grouping):",
-    default: label.toLowerCase(),
-  });
-
-  const maxDepth = await number({
-    message: "Max scan depth (how deep to look for projects):",
-    default: 3,
-    min: 1,
-    max: 6,
-  });
-
-  return {
-    path: dirPath,
-    label,
-    category,
-    maxDepth: maxDepth ?? 3,
-  };
 }
 
 export async function setup(): Promise<void> {
@@ -71,8 +29,10 @@ async function _setup(): Promise<void> {
 
   let config: Config = (await loadConfig()) ?? {
     version: 1,
+    configVersion: 0,
     scanRoots: [],
     customTypes: [],
+    projectConstructor: { templates: { gistUrl: "" } },
     preferences: {
       showProjectType: true,
       showCategory: true,
@@ -183,6 +143,33 @@ async function _setup(): Promise<void> {
     spinner.stop(`${green("✓")} Found ${bold(String(projects.length))} projects`);
   }
 
+  // Init templates directory with example template
+  try {
+    await mkdir(paths.templatesDir, { recursive: true });
+    const examplePath = paths.template("example");
+    if (!existsSync(examplePath)) {
+      const exampleTemplate = {
+        id: "example-hidden",
+        hidden: true,
+        name: "Example Template",
+        description: "Example template — set hidden: false to show in wd new",
+        variants: [
+          {
+            type: "default",
+            name: "Default",
+            command: "echo 'Creating {PROJECT_NAME} with {PACKAGE_MANAGER.command}'",
+            supportedPackageManagers: [
+              { name: "bun", command: "bunx --bun", commandParam: "bun" },
+            ],
+          },
+        ],
+      };
+      await Bun.write(examplePath, JSON.stringify(exampleTemplate, null, 2));
+    }
+  } catch {
+    // Non-fatal
+  }
+
   console.log(`
 ${bold("Setup complete!")}
 
@@ -197,6 +184,7 @@ Then restart your shell:
 Quick start:
   ${cyan("wd")}          ${gray("→ interactive project selector")}
   ${cyan("wd recent")}   ${gray("→ recently visited projects")}
+  ${cyan("wd new")}      ${gray("→ create a new project from template")}
   ${cyan("wd ws new")}   ${gray("→ create a workspace")}
   ${cyan("wd open")} ${gray("<name>")}  ${gray("→ open a workspace")}
 `);

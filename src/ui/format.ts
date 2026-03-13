@@ -151,17 +151,17 @@ export function formatProjectLine(project: ProjectEntry): string {
 // ─── Header / clear ──────────────────────────────────────────────────────────
 
 const ASCII_LOGO = `
-db   d8b   db d8888b. 
-88   I8I   88 88  \`8D 
-88   I8I   88 88   88 
-Y8   I8I   88 88   88 
-\`8b d8'8b d8' 88  .8D 
- \`8b8' \`8d8'  Y8888D' 
+  db   d8b   db d8888b. 
+  88   I8I   88 88  \`8D 
+  88   I8I   88 88   88 
+  Y8   I8I   88 88   88 
+  \`8b d8'8b d8' 88  .8D 
+   \`8b8' \`8d8'  Y8888D' 
 `;
 
 export function printHeader(): void {
   console.log(cyan(ASCII_LOGO));
-  console.log(gray("   Workspace Director\n"));
+  console.log(gray("    Workspace Director\n"));
 }
 
 export function clearScreen(): void {

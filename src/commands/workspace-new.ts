@@ -8,6 +8,7 @@ import {
 } from "@inquirer/prompts";
 import {
   loadCache,
+  loadWorkspace,
   requireConfig,
   saveCache,
   saveWorkspace,
@@ -15,6 +16,7 @@ import {
 import { scanProjects } from "../core/scanner";
 import { filterAndRank } from "../core/fuzzy";
 import { listAllContainers, isDockerAvailable } from "../core/docker";
+import { isValidWorkspaceName } from "../core/workspace-names";
 import type {
   Cache,
   ProjectEntry,
@@ -78,10 +80,12 @@ async function _workspaceNew(): Promise<void> {
   // Workspace name
   const name = await input({
     message: "Workspace name:",
-    validate: (v) => {
+    validate: async (v) => {
       if (!v.trim()) return "Name cannot be empty";
-      if (!/^[a-z0-9-_]+$/i.test(v.trim()))
-        return "Use only letters, numbers, hyphens, underscores";
+      if (!isValidWorkspaceName(v))
+        return "Use only lowercase letters, numbers, hyphens, underscores";
+      const existing = await loadWorkspace(v.trim());
+      if (existing) return `Workspace "${v.trim()}" already exists`;
       return true;
     },
   });
