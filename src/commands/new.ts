@@ -22,6 +22,7 @@ import {
   saveConfig,
   loadHistory,
   saveHistory,
+  loadCache,
 } from "../config/manager";
 import { runPendingMigrations } from "../config/migrations";
 import type { ShellOutput } from "../utils/shell";
@@ -388,10 +389,13 @@ async function _newProject(shellOutput: ShellOutput): Promise<void> {
       console.log(`${green("✓")} Directory: ${bold(targetDir)}`);
     } else {
       const configData = await requireConfig();
+      const cache = await loadCache();
+      const projectPaths = new Set(cache?.projects.map((p) => p.path) ?? []);
       const dirResult = await directorySearch({
         message: "Target directory:",
         scanRoots: configData.scanRoots,
         pageSize: 10,
+        excludedPaths: projectPaths,
       });
       targetDir = dirResult.path;
 

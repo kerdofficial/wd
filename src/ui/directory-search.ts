@@ -25,6 +25,7 @@ import {
 import colors from "yoctocolors-cjs";
 import figures from "@inquirer/figures";
 import type { ScanRoot } from "../config/schema";
+import { fuzzyMatch } from "../core/fuzzy";
 import { readdir, stat } from "node:fs/promises";
 import { join, basename } from "node:path";
 
@@ -32,7 +33,7 @@ import { join, basename } from "node:path";
 
 export interface DirectorySearchResult {
   path: string;
-  isNew: boolean;  // true if the path was manually typed and didn't exist
+  isNew: boolean; // true if the path was manually typed and didn't exist
 }
 
 type Choice = {
@@ -49,6 +50,7 @@ interface DirectorySearchConfig {
   scanRoots: ScanRoot[];
   pageSize?: number;
   defaultPath?: string;
+  excludedPaths?: Set<string>;
 }
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
@@ -71,7 +73,8 @@ const dirTheme = {
 
 async function scanDirectories(
   scanRoots: ScanRoot[],
-  maxEntries = 500
+  excludedPaths: Set<string>,
+  maxEntries = 2000,
 ): Promise<string[]> {
   const results: string[] = [];
 
@@ -87,7 +90,8 @@ async function scanDirectories(
           const info = await stat(full);
           if (info.isDirectory()) {
             results.push(full);
-            if (depth < maxDepth) {
+            // Don't recurse into known project directories
+            if (!excludedPaths.has(full) && depth < maxDepth) {
               await walk(full, depth + 1, maxDepth);
             }
           }
@@ -110,31 +114,72 @@ async function scanDirectories(
 
 // ─── Fuzzy filter ─────────────────────────────────────────────────────────────
 
-function fuzzyFilter(dirs: string[], term: string): NormalizedChoice[] {
+function dirToChoice(d: string): NormalizedChoice {
+  return { value: d, name: d, short: d, description: basename(d) };
+}
+
+function fuzzyFilter(
+  dirs: string[],
+  term: string,
+  scanRoots: ScanRoot[],
+): NormalizedChoice[] {
   if (!term.trim()) {
-    return dirs.slice(0, 200).map((d) => ({
-      value: d,
-      name: d,
-      short: d,
-      description: basename(d),
-    }));
+    return dirs.slice(0, 200).map(dirToChoice);
   }
-  const lower = term.toLowerCase();
-  return dirs
-    .filter((d) => d.toLowerCase().includes(lower))
-    .slice(0, 100)
-    .map((d) => ({
-      value: d,
-      name: d,
-      short: d,
-    }));
+  // Absolute path: prefix + fuzzy on the trailing segment
+  if (term.startsWith("/")) {
+    // Find the last '/' to split into parent prefix and partial name
+    const lastSlash = term.lastIndexOf("/");
+    const parentPrefix = term.slice(0, lastSlash); // e.g. "/a/b/test-folder"
+    const partial = term.slice(lastSlash + 1); // e.g. "ex" or ""
+
+    // Candidates: dirs under parentPrefix (or equal to it)
+    const candidates = dirs.filter(
+      (d) => d === parentPrefix || d.startsWith(parentPrefix + "/"),
+    );
+
+    if (!partial) {
+      // Trailing slash or exact path — show the dir itself + direct children
+      return candidates.slice(0, 100).map(dirToChoice);
+    }
+
+    // Fuzzy match the partial against the tail after parentPrefix
+    const scored: { dir: string; score: number }[] = [];
+    for (const d of candidates) {
+      const tail = d.slice(parentPrefix.length + 1); // e.g. "test-project" or "wd"
+      if (!tail) continue; // skip the parent itself
+      const s = fuzzyMatch(partial, tail);
+      if (s !== null) scored.push({ dir: d, score: s });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, 100).map(({ dir }) => dirToChoice(dir));
+  }
+  const scored: { dir: string; score: number }[] = [];
+  for (const d of dirs) {
+    // Match against basename (most relevant for short queries)
+    const baseScore = fuzzyMatch(term, basename(d));
+    // Match against path relative to scan root (avoids /Volumes/... false positives)
+    let relScore: number | null = null;
+    for (const root of scanRoots) {
+      if (d.startsWith(root.path + "/")) {
+        relScore = fuzzyMatch(term, d.slice(root.path.length + 1));
+        break;
+      }
+    }
+    const best = Math.max(baseScore ?? -Infinity, relScore ?? -Infinity);
+    if (best > -Infinity) {
+      scored.push({ dir: d, score: best });
+    }
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 100).map(({ dir }) => dirToChoice(dir));
 }
 
 // ─── @ mode: scan root chips ──────────────────────────────────────────────────
 
 function buildAtChoices(
   scanRoots: ScanRoot[],
-  term: string
+  term: string,
 ): NormalizedChoice[] {
   const query = term.slice(1).toLowerCase();
   return scanRoots
@@ -157,36 +202,37 @@ export default createPrompt<DirectorySearchResult, DirectorySearchConfig>(
     const { pageSize = 10, scanRoots } = config;
     const theme = makeTheme(dirTheme, undefined);
 
-    const [status, setStatus] = useState<"loading" | "idle" | "done">("loading");
+    const [status, setStatus] = useState<"loading" | "idle" | "done">(
+      "loading",
+    );
     const [searchTerm, setSearchTerm] = useState(config.defaultPath ?? "");
     const [allDirs, setAllDirs] = useState<string[]>([]);
-    const [choices, setChoices] = useState<NormalizedChoice[]>([]);
 
     const prefix = usePrefix({ status, theme });
 
     // Load all directories once
     useEffect(() => {
       let cancelled = false;
-      scanDirectories(scanRoots).then((dirs) => {
-        if (!cancelled) {
-          setAllDirs(dirs);
-          setChoices(fuzzyFilter(dirs, searchTerm));
-          setStatus("idle");
-        }
-      });
-      return () => { cancelled = true; };
+      scanDirectories(scanRoots, config.excludedPaths ?? new Set()).then(
+        (dirs) => {
+          if (!cancelled) {
+            setAllDirs(dirs);
+            setStatus("idle");
+          }
+        },
+      );
+      return () => {
+        cancelled = true;
+      };
     }, []);
 
-    // Re-filter on search term change
-    useEffect(() => {
-      if (status === "loading") return;
-      const term = searchTerm;
-      if (term.startsWith("@")) {
-        setChoices(buildAtChoices(scanRoots, term));
-      } else {
-        setChoices(fuzzyFilter(allDirs, term));
-      }
-    }, [searchTerm]);
+    // Choices computed synchronously during render — always in sync with searchTerm
+    const choices = useMemo<NormalizedChoice[]>(() => {
+      if (status === "loading" || allDirs.length === 0) return [];
+      if (searchTerm.startsWith("@"))
+        return buildAtChoices(scanRoots, searchTerm);
+      return fuzzyFilter(allDirs, searchTerm, scanRoots);
+    }, [allDirs, searchTerm, status]);
 
     const bounds = useMemo(() => {
       const first = choices.findIndex((c) => !c.disabled);
@@ -194,7 +240,9 @@ export default createPrompt<DirectorySearchResult, DirectorySearchConfig>(
       return { first, last };
     }, [choices]);
 
-    const [active = bounds.first, setActive] = useState<number | undefined>(undefined);
+    const [active = bounds.first, setActive] = useState<number | undefined>(
+      undefined,
+    );
 
     const selectedChoice = active !== undefined ? choices[active] : undefined;
 
@@ -224,8 +272,6 @@ export default createPrompt<DirectorySearchResult, DirectorySearchConfig>(
 
       // Up/Down navigation
       if (status !== "loading" && (isUpKey(key) || isDownKey(key))) {
-        rl.clearLine(0);
-        rl.write(searchTerm);
         if (
           (isUpKey(key) && active !== bounds.first) ||
           (isDownKey(key) && active !== bounds.last)
@@ -300,7 +346,7 @@ export default createPrompt<DirectorySearchResult, DirectorySearchConfig>(
         colors.dim("  Roots: ") +
         roots
           .map((l, i) =>
-            i === (active ?? 0) ? colors.cyan(`[${l}]`) : colors.dim(l)
+            i === (active ?? 0) ? colors.cyan(`[${l}]`) : colors.dim(l),
           )
           .join("  ");
     }
@@ -315,7 +361,8 @@ export default createPrompt<DirectorySearchResult, DirectorySearchConfig>(
         item: NormalizedChoice;
         isActive: boolean;
       }) {
-        if ((item as { separator?: boolean }).separator) return ` ${(item as { separator: string }).separator}`;
+        if ((item as { separator?: boolean }).separator)
+          return ` ${(item as unknown as { separator: string }).separator}`;
         if (item.disabled) {
           const label =
             typeof item.disabled === "string" ? item.disabled : "(disabled)";
@@ -342,5 +389,5 @@ export default createPrompt<DirectorySearchResult, DirectorySearchConfig>(
       .trimEnd();
 
     return [header, body];
-  }
+  },
 );
