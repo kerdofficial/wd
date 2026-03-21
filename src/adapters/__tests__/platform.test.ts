@@ -18,6 +18,10 @@ describe("Platform resolution", () => {
     test("falls back to zsh for empty string", () => {
       expect(resolveShell("").id).toBe("zsh");
     });
+
+    test("resolves nushell adapter for 'nu'", () => {
+      expect(resolveShell("nu").id).toBe("nu");
+    });
   });
 
   describe("resolveTerminal", () => {
