@@ -10,6 +10,7 @@ import { workspaceEdit } from "./workspace-edit";
 import { workspaceDuplicate } from "./workspace-duplicate";
 import { gracefulRun } from "../utils/prompt-wrapper";
 import type { ShellOutput } from "../utils/shell";
+import type { PlatformContext } from "../adapters/platform";
 import type { Workspace } from "../config/schema";
 import { bold, cyan, gray, red, green, clearScreen, printHeader } from "../ui/format";
 
@@ -35,11 +36,11 @@ function buildWorkspaceChoiceName(ws: Workspace): string {
   return lines.join("\n") + "\n";
 }
 
-export async function workspaceSelect(shellOutput: ShellOutput): Promise<void> {
-  await gracefulRun(() => _workspaceSelect(shellOutput));
+export async function workspaceSelect(shellOutput: ShellOutput, platform: PlatformContext): Promise<void> {
+  await gracefulRun(() => _workspaceSelect(shellOutput, platform));
 }
 
-async function _workspaceSelect(shellOutput: ShellOutput): Promise<void> {
+async function _workspaceSelect(shellOutput: ShellOutput, platform: PlatformContext): Promise<void> {
   let running = true;
 
   while (running) {
@@ -75,10 +76,10 @@ async function _workspaceSelect(shellOutput: ShellOutput): Promise<void> {
       running = false;
     } else if (result.startsWith("quick-open:")) {
       const name = result.slice("quick-open:".length);
-      await open(name, shellOutput);
+      await open(name, shellOutput, platform);
       return;
     } else {
-      const shouldExit = await showWorkspaceDetail(result, shellOutput);
+      const shouldExit = await showWorkspaceDetail(result, shellOutput, platform);
       if (shouldExit) return;
     }
   }
@@ -90,7 +91,8 @@ async function _workspaceSelect(shellOutput: ShellOutput): Promise<void> {
  */
 async function showWorkspaceDetail(
   name: string,
-  shellOutput: ShellOutput
+  shellOutput: ShellOutput,
+  platform: PlatformContext,
 ): Promise<boolean> {
   let running = true;
 
@@ -121,7 +123,7 @@ async function showWorkspaceDetail(
     if (isEscape(result) || result === "back") {
       running = false;
     } else if (result === "open") {
-      await open(name, shellOutput);
+      await open(name, shellOutput, platform);
       return true;
     } else if (result === "duplicate") {
       await workspaceDuplicate(name);
