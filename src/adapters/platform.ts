@@ -2,6 +2,7 @@ import type { ShellAdapter } from "./shell/adapter";
 import type { TerminalAdapter } from "./terminal/adapter";
 import type { ClipboardAdapter } from "./clipboard/adapter";
 import { ZshShellAdapter } from "./shell/zsh";
+import { BashShellAdapter } from "./shell/bash";
 import {
   MacOSITerm2Adapter,
   MacOSTerminalAppAdapter,
@@ -21,7 +22,10 @@ export interface PlatformContext {
   readonly clipboard: ClipboardAdapter | null;
 }
 
-const shellAdapters: ShellAdapter[] = [new ZshShellAdapter()];
+const shellAdapters: ShellAdapter[] = [
+  new ZshShellAdapter(),
+  new BashShellAdapter(),
+];
 
 const terminalAdapters: TerminalAdapter[] = [
   new MacOSITerm2Adapter(),
