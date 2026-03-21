@@ -18,6 +18,10 @@ describe("Platform resolution", () => {
     test("falls back to zsh for empty string", () => {
       expect(resolveShell("").id).toBe("zsh");
     });
+
+    test("resolves fish adapter for 'fish'", () => {
+      expect(resolveShell("fish").id).toBe("fish");
+    });
   });
 
   describe("resolveTerminal", () => {
