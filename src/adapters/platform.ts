@@ -4,6 +4,7 @@ import type { ClipboardAdapter } from "./clipboard/adapter";
 import { ZshShellAdapter } from "./shell/zsh";
 import { BashShellAdapter } from "./shell/bash";
 import { FishShellAdapter } from "./shell/fish";
+import { PowerShellShellAdapter } from "./shell/pwsh";
 import {
   MacOSITerm2Adapter,
   MacOSTerminalAppAdapter,
@@ -27,6 +28,7 @@ const shellAdapters: ShellAdapter[] = [
   new ZshShellAdapter(),
   new BashShellAdapter(),
   new FishShellAdapter(),
+  new PowerShellShellAdapter(),
 ];
 
 const terminalAdapters: TerminalAdapter[] = [

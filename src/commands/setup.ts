@@ -183,7 +183,7 @@ To activate ${bold(cyan("wd"))}, add this line to your ${gray(shell.profilePath(
 
 Then restart your shell:
 
-  ${gray(`source ${shell.profilePath()}`)}
+  ${gray(shell.sourceCommand(shell.profilePath()))}
 
 Quick start:
   ${cyan("wd")}          ${gray("→ interactive project selector")}

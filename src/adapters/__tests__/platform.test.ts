@@ -26,6 +26,10 @@ describe("Platform resolution", () => {
     test("resolves fish adapter for 'fish'", () => {
       expect(resolveShell("fish").id).toBe("fish");
     });
+
+    test("resolves pwsh adapter for 'pwsh'", () => {
+      expect(resolveShell("pwsh").id).toBe("pwsh");
+    });
   });
 
   describe("resolveTerminal", () => {
