@@ -2,6 +2,10 @@ import type { ShellAdapter } from "./shell/adapter";
 import type { TerminalAdapter } from "./terminal/adapter";
 import type { ClipboardAdapter } from "./clipboard/adapter";
 import { ZshShellAdapter } from "./shell/zsh";
+import { BashShellAdapter } from "./shell/bash";
+import { FishShellAdapter } from "./shell/fish";
+import { PowerShellShellAdapter } from "./shell/pwsh";
+import { NushellShellAdapter } from "./shell/nushell";
 import {
   MacOSITerm2Adapter,
   MacOSTerminalAppAdapter,
@@ -21,7 +25,13 @@ export interface PlatformContext {
   readonly clipboard: ClipboardAdapter | null;
 }
 
-const shellAdapters: ShellAdapter[] = [new ZshShellAdapter()];
+const shellAdapters: ShellAdapter[] = [
+  new ZshShellAdapter(),
+  new BashShellAdapter(),
+  new FishShellAdapter(),
+  new PowerShellShellAdapter(),
+  new NushellShellAdapter(),
+];
 
 const terminalAdapters: TerminalAdapter[] = [
   new MacOSITerm2Adapter(),
@@ -35,6 +45,14 @@ export function resolveShell(shellId?: string): ShellAdapter {
     const found = shellAdapters.find((a) => a.id === shellId);
     if (found) return found;
   }
+
+  const loginShell = process.env.SHELL;
+  if (loginShell) {
+    const shellName = loginShell.split("/").at(-1);
+    const found = shellAdapters.find((a) => a.id === shellName);
+    if (found) return found;
+  }
+
   return shellAdapters[0]!;
 }
 

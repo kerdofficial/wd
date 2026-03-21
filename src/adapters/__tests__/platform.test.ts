@@ -18,6 +18,22 @@ describe("Platform resolution", () => {
     test("falls back to zsh for empty string", () => {
       expect(resolveShell("").id).toBe("zsh");
     });
+
+    test("resolves bash adapter for 'bash'", () => {
+      expect(resolveShell("bash").id).toBe("bash");
+    });
+
+    test("resolves fish adapter for 'fish'", () => {
+      expect(resolveShell("fish").id).toBe("fish");
+    });
+
+    test("resolves pwsh adapter for 'pwsh'", () => {
+      expect(resolveShell("pwsh").id).toBe("pwsh");
+    });
+
+    test("resolves nushell adapter for 'nu'", () => {
+      expect(resolveShell("nu").id).toBe("nu");
+    });
   });
 
   describe("resolveTerminal", () => {
