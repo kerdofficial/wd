@@ -65,20 +65,33 @@ For each scan root, you provide:
 
 After saving the config, setup:
 
-- tries to copy the shell integration script to `~/.config/wd/wd.zsh`
+- generates and installs the shell integration script for your shell (e.g. `~/.config/wd/wd.zsh`, `wd.bash`, `wd.fish`, `wd.ps1`, or `wd.nu`)
 - offers to run an initial project scan immediately
 - creates `~/.config/wd/templates/`
 - creates a hidden example template in that directory if one does not exist yet
 
-At the end, add this line to your `~/.zshrc` if it is not already there:
+At the end, add the displayed source line to your shell profile if it is not already there. For example:
 
 ```sh
+# zsh (~/.zshrc)
 source ~/.config/wd/wd.zsh
+
+# bash (~/.bashrc, or ~/.bash_profile on macOS if your shell doesn't load .bashrc)
+source ~/.config/wd/wd.bash
+
+# fish (~/.config/fish/config.fish)
+source ~/.config/wd/wd.fish
+
+# PowerShell ($PROFILE)
+. ~/.config/wd/wd.ps1
+
+# Nushell (~/.config/nushell/config.nu)
+source ~/.config/wd/wd.nu
 ```
 
-Then restart your shell or run `source ~/.zshrc`.
+Then restart your shell.
 
-> **Note on shell integration:** Without sourcing `wd.zsh`, the `wd-bin` binary still works but `cd` will not take effect in your current shell. This is a shell limitation: a child process cannot change the parent shell's directory. The `wd` function wraps the binary and applies the `cd` command for you.
+> **Note on shell integration:** Without sourcing the shell wrapper, the `wd-bin` binary still works but `cd` will not take effect in your current shell. This is a shell limitation: a child process cannot change the parent shell's directory. The `wd` function wraps the binary and applies the `cd` command for you.
 
 ---
 
@@ -950,11 +963,7 @@ Custom types are checked after built-in types, so they cannot override a built-i
 
 **`wd: command not found`**
 
-The shell integration is not active. Make sure your `~/.zshrc` contains:
-
-```sh
-source ~/.config/wd/wd.zsh
-```
+The shell integration is not active. Make sure your shell profile contains the appropriate source line (run `wd setup` to see the exact line for your shell).
 
 Then reload your shell.
 
