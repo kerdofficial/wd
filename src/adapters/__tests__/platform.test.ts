@@ -18,6 +18,10 @@ describe("Platform resolution", () => {
     test("falls back to zsh for empty string", () => {
       expect(resolveShell("").id).toBe("zsh");
     });
+
+    test("resolves pwsh adapter for 'pwsh'", () => {
+      expect(resolveShell("pwsh").id).toBe("pwsh");
+    });
   });
 
   describe("resolveTerminal", () => {
