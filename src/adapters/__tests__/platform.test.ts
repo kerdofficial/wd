@@ -30,6 +30,10 @@ describe("Platform resolution", () => {
     test("resolves pwsh adapter for 'pwsh'", () => {
       expect(resolveShell("pwsh").id).toBe("pwsh");
     });
+
+    test("resolves nushell adapter for 'nu'", () => {
+      expect(resolveShell("nu").id).toBe("nu");
+    });
   });
 
   describe("resolveTerminal", () => {

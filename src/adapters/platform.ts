@@ -5,6 +5,7 @@ import { ZshShellAdapter } from "./shell/zsh";
 import { BashShellAdapter } from "./shell/bash";
 import { FishShellAdapter } from "./shell/fish";
 import { PowerShellShellAdapter } from "./shell/pwsh";
+import { NushellShellAdapter } from "./shell/nushell";
 import {
   MacOSITerm2Adapter,
   MacOSTerminalAppAdapter,
@@ -29,6 +30,7 @@ const shellAdapters: ShellAdapter[] = [
   new BashShellAdapter(),
   new FishShellAdapter(),
   new PowerShellShellAdapter(),
+  new NushellShellAdapter(),
 ];
 
 const terminalAdapters: TerminalAdapter[] = [
