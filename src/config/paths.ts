@@ -15,6 +15,10 @@ export const paths = {
     return join(CONFIG_DIR, "workspaces", `${name}.json`);
   },
 
+  shellScriptFor(fileName: string): string {
+    return join(CONFIG_DIR, fileName);
+  },
+
   templateCache: join(CONFIG_DIR, "templates", "template-cache.json"),
   templatesDir: join(CONFIG_DIR, "templates"),
 

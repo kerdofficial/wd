@@ -7,21 +7,22 @@ import type { Cache, Config } from "../config/schema";
 import { bold, green, yellow, gray, cyan, Spinner, printHeader, clearScreen } from "../ui/format";
 import { gracefulRun } from "../utils/prompt-wrapper";
 import { paths } from "../config/paths";
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { addScanRoot } from "../utils/scan-root-prompt";
+import type { ShellAdapter } from "../adapters/shell/adapter";
 
-async function installShellScript(): Promise<void> {
-  // Copy shell/wd.zsh to ~/.config/wd/wd.zsh
-  const srcPath = new URL("../../shell/wd.zsh", import.meta.url).pathname;
-  const content = readFileSync(srcPath, "utf-8");
-  await Bun.write(paths.shellScript, content);
+async function installShellScript(shell: ShellAdapter): Promise<string> {
+  const content = shell.generateWrapper("wd-bin");
+  const destPath = paths.shellScriptFor(shell.integrationFileName());
+  await Bun.write(destPath, content);
+  return destPath;
 }
 
-export async function setup(): Promise<void> {
-  await gracefulRun(_setup);
+export async function setup(shell: ShellAdapter): Promise<void> {
+  await gracefulRun(() => _setup(shell));
 }
 
-async function _setup(): Promise<void> {
+async function _setup(shell: ShellAdapter): Promise<void> {
   clearScreen();
   printHeader();
 
@@ -109,9 +110,10 @@ async function _setup(): Promise<void> {
   await saveConfig(config);
 
   // Install shell script
+  let shellScriptPath = "";
   try {
-    await installShellScript();
-    console.log(`\n${green("✓")} Shell integration installed: ${gray(paths.shellScript)}`);
+    shellScriptPath = await installShellScript(shell);
+    console.log(`\n${green("✓")} Shell integration installed: ${gray(shellScriptPath)}`);
   } catch {
     console.log(`\n${yellow("!")} Could not copy shell script automatically.`);
   }
@@ -170,16 +172,18 @@ async function _setup(): Promise<void> {
     // Non-fatal
   }
 
+  const activationPath = shellScriptPath || paths.shellScriptFor(shell.integrationFileName());
+
   console.log(`
 ${bold("Setup complete!")}
 
-To activate ${bold(cyan("wd"))}, add this line to your ${gray("~/.zshrc")}:
+To activate ${bold(cyan("wd"))}, add this line to your ${gray(shell.profilePath())}:
 
-  ${cyan(`source ${paths.shellScript}`)}
+  ${cyan(shell.sourceCommand(activationPath))}
 
 Then restart your shell:
 
-  ${gray("source ~/.zshrc")}
+  ${gray(`source ${shell.profilePath()}`)}
 
 Quick start:
   ${cyan("wd")}          ${gray("→ interactive project selector")}

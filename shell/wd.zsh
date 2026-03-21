@@ -10,7 +10,7 @@ function wd() {
   tmpfile=$(mktemp /tmp/wd-cmd.XXXXXX)
 
   # Run the binary with the temp file path for shell command output
-  wd-bin --shell-out="$tmpfile" "$@"
+  WD_SHELL=zsh wd-bin --shell-out="$tmpfile" "$@"
   local exit_code=$?
 
   if [[ $exit_code -eq 0 && -f "$tmpfile" ]]; then
