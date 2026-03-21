@@ -1,16 +1,33 @@
-# wd - Workspace Director
+import type { ShellAdapter, ShellOp } from "./adapter";
+
+export class ZshShellAdapter implements ShellAdapter {
+  readonly id = "zsh";
+
+  renderOps(ops: ShellOp[]): string {
+    return ops
+      .map((op) => {
+        switch (op.op) {
+          case "cd":
+            return `cd ${this.quote(op.path)}`;
+          case "run":
+            return op.command;
+        }
+      })
+      .join("\n");
+  }
+
+  generateWrapper(binaryName: string): string {
+    return `# wd - Workspace Director
 # Shell integration for zsh
 #
 # Add to your ~/.zshrc:
-#   source $(brew --prefix)/share/wd/wd.zsh     # if installed via Homebrew
-#   source ~/.config/wd/wd.zsh                   # if installed manually
+#   source ~/.config/wd/wd.zsh
 
 function wd() {
   local tmpfile
   tmpfile=$(mktemp /tmp/wd-cmd.XXXXXX)
 
-  # Run the binary with the temp file path for shell command output
-  WD_SHELL=zsh wd-bin --shell-out="$tmpfile" "$@"
+  WD_SHELL=zsh ${binaryName} --shell-out="$tmpfile" "$@"
   local exit_code=$?
 
   if [[ $exit_code -eq 0 && -f "$tmpfile" ]]; then
@@ -25,11 +42,10 @@ function wd() {
   return $exit_code
 }
 
-# Tab completion
 _wd_complete() {
   local state
-  _arguments \
-    '1: :->subcommand' \
+  _arguments \\
+    '1: :->subcommand' \\
     '*: :->args'
 
   case $state in
@@ -53,13 +69,13 @@ _wd_complete() {
           ;;
         ws)
           case $words[3] in
-            edit|delete)
+            edit|delete|duplicate)
               local workspaces
               workspaces=($(ls ~/.config/wd/workspaces/*.json 2>/dev/null | xargs -I{} basename {} .json))
               _describe 'workspace' workspaces
               ;;
             *)
-              local ws_cmds=('new:Create a new workspace' 'list:List all workspaces' 'edit:Edit a workspace' 'delete:Delete a workspace')
+              local ws_cmds=('new:Create a new workspace' 'list:List all workspaces' 'edit:Edit a workspace' 'delete:Delete a workspace' 'duplicate:Duplicate a workspace')
               _describe 'ws command' ws_cmds
               ;;
           esac
@@ -70,3 +86,22 @@ _wd_complete() {
 }
 
 compdef _wd_complete wd
+`;
+  }
+
+  integrationFileName(): string {
+    return "wd.zsh";
+  }
+
+  profilePath(): string {
+    return "~/.zshrc";
+  }
+
+  sourceCommand(scriptPath: string): string {
+    return `source ${scriptPath}`;
+  }
+
+  private quote(s: string): string {
+    return `'${s.replace(/'/g, "'\\''")}'`;
+  }
+}
