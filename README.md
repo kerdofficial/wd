@@ -27,7 +27,7 @@ When you have dozens (or hundreds) of projects spread across multiple directorie
 ## Requirements
 
 - **macOS** (tested on macOS 26) — terminal tab opening relies on AppleScript
-- **zsh** — shell integration currently supports zsh only (contributions for bash/fish/nushell are welcome)
+- **zsh** — shell integration currently supports zsh only (support for bash/fish/powershell/nushell coming soon)
 - [Bun](https://bun.sh) — for building from source
 - [OrbStack](https://orbstack.dev) or Docker Desktop — for Docker features (optional)
 
