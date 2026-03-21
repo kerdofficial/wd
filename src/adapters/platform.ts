@@ -45,6 +45,14 @@ export function resolveShell(shellId?: string): ShellAdapter {
     const found = shellAdapters.find((a) => a.id === shellId);
     if (found) return found;
   }
+
+  const loginShell = process.env.SHELL;
+  if (loginShell) {
+    const shellName = loginShell.split("/").at(-1);
+    const found = shellAdapters.find((a) => a.id === shellName);
+    if (found) return found;
+  }
+
   return shellAdapters[0]!;
 }
 
