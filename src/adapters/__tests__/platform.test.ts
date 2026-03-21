@@ -22,6 +22,10 @@ describe("Platform resolution", () => {
     test("resolves bash adapter for 'bash'", () => {
       expect(resolveShell("bash").id).toBe("bash");
     });
+
+    test("resolves fish adapter for 'fish'", () => {
+      expect(resolveShell("fish").id).toBe("fish");
+    });
   });
 
   describe("resolveTerminal", () => {
