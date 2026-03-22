@@ -158,8 +158,8 @@ export const PackageManagerSchema = z.object({
 });
 
 export const WizardParameterSchema = z.object({
-  default: z.string(), // long flag name: "base-color"
-  shorthand: z.string(), // short flag: "bc"
+  default: z.string(), // long flag name: "preset"
+  shorthand: z.string(), // short flag: "p"
 });
 
 export const AdditionalParameterSchema = z.object({
@@ -171,7 +171,7 @@ export const AdditionalParameterSchema = z.object({
   multiSelectDivider: z.string().optional(),
   allowedInputValues: z.union([z.string(), z.number(), z.boolean()]).optional(),
   options: z.array(z.string()).optional(),
-  parameterKey: z.string(), // interpolation key: "BASE_COLOR"
+  parameterKey: z.string(), // interpolation key: "PRESET"
 });
 
 export const VariantSchema = z.object({

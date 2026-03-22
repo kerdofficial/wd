@@ -3,7 +3,7 @@
  *
  * Interactive wizard for creating new projects from templates.
  * Supports pre-filled values via CLI flags (--template, --pm, --dir, etc.)
- * and dynamic flags for additional parameters (--base-color zinc, etc.)
+ * and dynamic flags for additional parameters (--preset nova, etc.)
  */
 import { input, select, search, checkbox, confirm } from "@inquirer/prompts";
 import { join, basename } from "node:path";
@@ -59,11 +59,11 @@ const TIPS = [
   `Use ${bold("--verbose")} to stream live output instead of the spinner`,
   `Use ${bold("--raw")} to force-refresh the template cache from the source`,
   `Pass the project name as the first argument: ${gray("wd new my-app -t nextjs")}`,
-  `Dynamic template flags like ${bold("--base-color zinc")} pre-fill additional parameters`,
-  `Templates expose short aliases for dynamic flags, e.g. ${gray("-bc zinc")} instead of ${gray("--base-color zinc")}`,
+  `Dynamic template flags like ${bold("--preset nova")} pre-fill additional parameters`,
+  `Templates expose short aliases for dynamic flags, e.g. ${gray("-p nova")} instead of ${gray("--preset nova")}`,
   `In the directory picker, type ${bold("@")} to fuzzy-search your configured scan roots`,
   `In the directory picker, press ${bold("Tab")} to autocomplete the highlighted path`,
-  `Skip every prompt in one go: ${gray("wd new my-app -t nextjs -v shadcn -bc zinc --pm bun")}`,
+  `Skip every prompt in one go: ${gray("wd new my-app -t nextjs -v shadcn -p nova --pm bun")}`,
   `Choose ${bold("Edit")} in the summary prompt to go back and change any step`,
   `If you type a new path in the directory picker, you'll be offered to add it as a scan root`,
   `After creation the new project is automatically recorded in your frecency history`,

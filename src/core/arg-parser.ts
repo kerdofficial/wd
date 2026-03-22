@@ -3,8 +3,8 @@
  * Commander.js handles base flags; this parser handles dynamic template-specific flags.
  *
  * Fixed flags: --template, --variant, --pm, --dir, --verbose, --raw
- * Dynamic flags: --base-color zinc → dynamicFlags.set("base-color", "zinc")
- * Shorthand: -bc zinc → resolved via template additionalParameters
+ * Dynamic flags: --preset nova → dynamicFlags.set("preset", "nova")
+ * Shorthand: -p nova → resolved via template additionalParameters
  */
 import type { Template } from "../config/schema";
 
@@ -83,7 +83,7 @@ export function parseNewArgs(
     unknownFlags: [],
   };
 
-  // Build shorthand lookup: "bc" → "base-color"
+  // Build shorthand lookup: "p" → "preset"
   const shorthands = buildShorthandMap(templates);
   const dynamicFlags = buildDynamicFlagSet(templates);
 
@@ -131,7 +131,7 @@ export function parseNewArgs(
       continue;
     }
 
-    // Long dynamic flag: --base-color zinc
+    // Long dynamic flag: --preset nova
     if (arg.startsWith("--") && !FIXED_FLAGS.has(arg)) {
       const flagName = arg.slice(2);
       const value = argv[i + 1];

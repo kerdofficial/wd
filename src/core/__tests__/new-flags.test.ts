@@ -11,13 +11,13 @@ const variant: Variant = {
   ],
   additionalParameters: [
     {
-      id: "base-color",
-      wizardParameter: { default: "base-color", shorthand: "bc" },
+      id: "preset",
+      wizardParameter: { default: "preset", shorthand: "p" },
       optional: false,
-      description: "Base color",
+      description: "Preset",
       type: "select",
-      options: ["zinc", "stone"],
-      parameterKey: "BASE_COLOR",
+      options: ["nova", "vega"],
+      parameterKey: "PRESET",
     },
   ],
 };
@@ -25,24 +25,24 @@ const variant: Variant = {
 describe("filterDynamicFlagsForVariant", () => {
   test("keeps only flags declared for the selected variant", () => {
     const cliFlags = new Map([
-      ["base-color", "zinc"],
+      ["preset", "nova"],
       ["router-type", "app"],
     ]);
 
     const result = filterDynamicFlagsForVariant(cliFlags, variant);
 
-    expect(result.acceptedFlags.get("base-color")).toBe("zinc");
+    expect(result.acceptedFlags.get("preset")).toBe("nova");
     expect(result.acceptedFlags.has("router-type")).toBe(false);
     expect(result.ignoredFlags).toEqual(["router-type"]);
   });
 
   test("returns all flags as ignored when variant has no dynamic parameters", () => {
     const result = filterDynamicFlagsForVariant(
-      new Map([["base-color", "zinc"]]),
+      new Map([["preset", "nova"]]),
       { ...variant, additionalParameters: [] },
     );
 
     expect(result.acceptedFlags.size).toBe(0);
-    expect(result.ignoredFlags).toEqual(["base-color"]);
+    expect(result.ignoredFlags).toEqual(["preset"]);
   });
 });

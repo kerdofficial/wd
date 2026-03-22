@@ -22,7 +22,7 @@ import {
 
 // ─── Source URL ───────────────────────────────────────────────────────────────
 export const TEMPLATES_SOURCE_URL =
-  "https://gist.githubusercontent.com/kerdofficial/8d6fc38b5427ed59a7fcc8964c70fd10/raw";
+  "https://gist.githubusercontent.com/kerdofficial/8d6fc38b5427ed59a7fcc8964c70fd10/raw/";
 
 // ─── Template source fetch ────────────────────────────────────────────────────
 

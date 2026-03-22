@@ -127,45 +127,45 @@ describe("parseNewArgs — combined flags", () => {
   });
 
   test("fixed + dynamic flags together", () => {
-    const templates = [makeTemplate("next", "bc", "base-color", "BASE_COLOR")];
+    const templates = [makeTemplate("next", "p", "preset", "PRESET")];
     const result = parseNewArgs([
       "my-app",
       "--template", "nextjs",
       "--pm", "bun",
-      "--base-color", "zinc",
+      "--preset", "nova",
       "--verbose",
     ], templates);
     expect(result.appName).toBe("my-app");
     expect(result.template).toBe("nextjs");
     expect(result.pm).toBe("bun");
-    expect(result.dynamicFlags.get("base-color")).toBe("zinc");
+    expect(result.dynamicFlags.get("preset")).toBe("nova");
     expect(result.verbose).toBe(true);
   });
 
   test("multiple dynamic flags together", () => {
     const templates = [
-      makeTemplate("next", "bc", "base-color", "BASE_COLOR"),
+      makeTemplate("next", "p", "preset", "PRESET"),
       makeTemplate("react", "rt", "router", "ROUTER_TYPE"),
       makeTemplate("tailwind", "tw", "tailwind", "TAILWIND"),
     ];
     const result = parseNewArgs([
-      "--base-color", "zinc",
+      "--preset", "nova",
       "--router", "app",
       "--tailwind", "yes",
     ], templates);
-    expect(result.dynamicFlags.get("base-color")).toBe("zinc");
+    expect(result.dynamicFlags.get("preset")).toBe("nova");
     expect(result.dynamicFlags.get("router")).toBe("app");
     expect(result.dynamicFlags.get("tailwind")).toBe("yes");
   });
 
   test("dry-run with template flags", () => {
-    const templates = [makeTemplate("next", "bc", "base-color", "BASE_COLOR")];
+    const templates = [makeTemplate("next", "p", "preset", "PRESET")];
     const result = parseNewArgs([
       "my-app",
       "--template", "nextjs",
       "--variant", "shadcn",
       "--pm", "pnpm",
-      "--base-color", "slate",
+      "--preset", "vega",
       "--dry-run",
     ], templates);
     expect(result.appName).toBe("my-app");
@@ -173,7 +173,7 @@ describe("parseNewArgs — combined flags", () => {
     expect(result.variant).toBe("shadcn");
     expect(result.pm).toBe("pnpm");
     expect(result.dryRun).toBe(true);
-    expect(result.dynamicFlags.get("base-color")).toBe("slate");
+    expect(result.dynamicFlags.get("preset")).toBe("vega");
   });
 
   test("flags in any order", () => {
@@ -207,29 +207,29 @@ describe("parseNewArgs — combined flags", () => {
 
 describe("parseNewArgs — shorthand flags", () => {
   test("shorthand resolved to long name via templates", () => {
-    const templates = [makeTemplate("next", "bc", "base-color", "BASE_COLOR")];
-    const result = parseNewArgs(["-bc", "zinc"], templates);
-    expect(result.dynamicFlags.get("base-color")).toBe("zinc");
+    const templates = [makeTemplate("next", "p", "preset", "PRESET")];
+    const result = parseNewArgs(["-p", "nova"], templates);
+    expect(result.dynamicFlags.get("preset")).toBe("nova");
   });
 
   test("shorthand combined with fixed flags", () => {
-    const templates = [makeTemplate("next", "bc", "base-color", "BASE_COLOR")];
+    const templates = [makeTemplate("next", "p", "preset", "PRESET")];
     const result = parseNewArgs(
-      ["my-app", "--template", "nextjs", "-bc", "stone"],
+      ["my-app", "--template", "nextjs", "-p", "maia"],
       templates
     );
     expect(result.appName).toBe("my-app");
     expect(result.template).toBe("nextjs");
-    expect(result.dynamicFlags.get("base-color")).toBe("stone");
+    expect(result.dynamicFlags.get("preset")).toBe("maia");
   });
 
   test("multiple shorthands from different templates", () => {
     const templates = [
-      makeTemplate("next", "bc", "base-color", "BASE_COLOR"),
+      makeTemplate("next", "p", "preset", "PRESET"),
       makeTemplate("react", "rt", "router-type", "ROUTER_TYPE"),
     ];
-    const result = parseNewArgs(["-bc", "zinc", "-rt", "app"], templates);
-    expect(result.dynamicFlags.get("base-color")).toBe("zinc");
+    const result = parseNewArgs(["-p", "nova", "-rt", "app"], templates);
+    expect(result.dynamicFlags.get("preset")).toBe("nova");
     expect(result.dynamicFlags.get("router-type")).toBe("app");
   });
 });
