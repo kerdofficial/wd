@@ -29,6 +29,14 @@ describe("macOS terminal adapters", () => {
     test("does not match missing TERM_PROGRAM", () => {
       expect(adapter.matches({})).toBe(false);
     });
+
+    test("tabDelay is 100", () => {
+      expect(adapter.capabilities.tabDelay).toBe(100);
+    });
+
+    test("does not have native cwd", () => {
+      expect(adapter.capabilities.nativeCwd).toBe(false);
+    });
   });
 
   describe("MacOSTerminalAppAdapter", () => {
@@ -49,6 +57,10 @@ describe("macOS terminal adapters", () => {
     test("does not match iTerm.app", () => {
       expect(adapter.matches({ TERM_PROGRAM: "iTerm.app" })).toBe(false);
     });
+
+    test("tabDelay is 500", () => {
+      expect(adapter.capabilities.tabDelay).toBe(500);
+    });
   });
 
   describe("MacOSGhosttyAdapter", () => {
@@ -68,6 +80,10 @@ describe("macOS terminal adapters", () => {
 
     test("does not match warp", () => {
       expect(adapter.matches({ TERM_PROGRAM: "WarpTerminal" })).toBe(false);
+    });
+
+    test("tabDelay is 500", () => {
+      expect(adapter.capabilities.tabDelay).toBe(500);
     });
   });
 
@@ -92,6 +108,10 @@ describe("macOS terminal adapters", () => {
 
     test("does not match missing TERM_PROGRAM", () => {
       expect(adapter.matches({})).toBe(false);
+    });
+
+    test("tabDelay is 500", () => {
+      expect(adapter.capabilities.tabDelay).toBe(500);
     });
   });
 });
