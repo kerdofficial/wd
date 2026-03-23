@@ -61,6 +61,43 @@ describe("Platform resolution", () => {
       );
     });
 
+    test("resolves tmux when TMUX is set", () => {
+      expect(
+        resolveTerminal({ TMUX: "/tmp/tmux-501/default,12345,0" })?.id,
+      ).toBe("tmux");
+    });
+
+    test("resolves Zellij when ZELLIJ is set", () => {
+      expect(resolveTerminal({ ZELLIJ: "my-session" })?.id).toBe("zellij");
+    });
+
+    test("tmux takes priority over iTerm2", () => {
+      expect(
+        resolveTerminal({
+          TMUX: "/tmp/tmux-501/default,12345,0",
+          TERM_PROGRAM: "iTerm.app",
+        })?.id,
+      ).toBe("tmux");
+    });
+
+    test("zellij takes priority over iTerm2", () => {
+      expect(
+        resolveTerminal({
+          ZELLIJ: "session",
+          TERM_PROGRAM: "iTerm.app",
+        })?.id,
+      ).toBe("zellij");
+    });
+
+    test("tmux takes priority over zellij", () => {
+      expect(
+        resolveTerminal({
+          TMUX: "/tmp/tmux-501/default,12345,0",
+          ZELLIJ: "session",
+        })?.id,
+      ).toBe("tmux");
+    });
+
     test("returns null for unknown terminal", () => {
       expect(resolveTerminal({ TERM_PROGRAM: "SomeWeirdTerminal" })).toBeNull();
     });
