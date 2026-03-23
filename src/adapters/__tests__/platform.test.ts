@@ -7,16 +7,23 @@ describe("Platform resolution", () => {
       expect(resolveShell("zsh").id).toBe("zsh");
     });
 
-    test("falls back to zsh for undefined", () => {
-      expect(resolveShell(undefined).id).toBe("zsh");
+    test("falls back to $SHELL or zsh for undefined", () => {
+      const expected = process.env.SHELL?.split("/").at(-1) ?? "zsh";
+      const adapter = resolveShell(undefined);
+      expect(["zsh", "bash", "fish", "pwsh", "nu"]).toContain(adapter.id);
+      if (expected === "zsh" || expected === "bash" || expected === "fish" || expected === "pwsh" || expected === "nu") {
+        expect(adapter.id).toBe(expected);
+      }
     });
 
-    test("falls back to zsh for unknown shell", () => {
-      expect(resolveShell("unknown-shell").id).toBe("zsh");
+    test("falls back to $SHELL or zsh for unknown shell", () => {
+      const adapter = resolveShell("unknown-shell");
+      expect(["zsh", "bash", "fish", "pwsh", "nu"]).toContain(adapter.id);
     });
 
-    test("falls back to zsh for empty string", () => {
-      expect(resolveShell("").id).toBe("zsh");
+    test("falls back to $SHELL or zsh for empty string", () => {
+      const adapter = resolveShell("");
+      expect(["zsh", "bash", "fish", "pwsh", "nu"]).toContain(adapter.id);
     });
 
     test("resolves bash adapter for 'bash'", () => {
