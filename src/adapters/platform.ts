@@ -17,6 +17,7 @@ import { MacOSClipboardAdapter } from "./clipboard/macos";
 export type { ShellAdapter } from "./shell/adapter";
 export type { ShellOp } from "./shell/adapter";
 export type { TerminalAdapter } from "./terminal/adapter";
+export type { TerminalCapabilities, TabOpenOptions } from "./terminal/adapter";
 export type { ClipboardAdapter } from "./clipboard/adapter";
 
 export interface PlatformContext {

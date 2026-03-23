@@ -21,8 +21,17 @@ export async function openWorkspaceTabs(
         continue;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      await terminal.openTab({ cwd: project.path, command: tab.command });
+      if (terminal.capabilities.tabDelay > 0) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, terminal.capabilities.tabDelay),
+        );
+      }
+
+      try {
+        await terminal.openTab({ cwd: project.path, command: tab.command });
+      } catch {
+        // best-effort
+      }
     }
 
     if (project.isPrimary && tabs.length === 0) {

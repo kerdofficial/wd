@@ -1,38 +1,20 @@
-import { $ } from "bun";
-import type { TerminalAdapter } from "./adapter";
-
-function shellQuote(s: string): string {
-  return `'${s.replace(/'/g, "'\\''")}'`;
-}
-
-function appleScriptQuote(s: string): string {
-  const escaped = s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  return `"${escaped}"`;
-}
-
-async function runOsascript(script: string): Promise<void> {
-  try {
-    await $`osascript -e ${script}`.quiet();
-  } catch {
-    // best effort
-  }
-}
-
-function buildFullCmd(cwd: string, command?: string): string {
-  return command
-    ? `cd ${shellQuote(cwd)} && ${command}`
-    : `cd ${shellQuote(cwd)}`;
-}
+import type { TerminalAdapter, TabOpenOptions, TerminalCapabilities } from "./adapter";
+import { buildPosixCmd, appleScriptQuote, runOsascript } from "./helpers";
 
 export class MacOSITerm2Adapter implements TerminalAdapter {
   readonly id = "iterm2";
+  readonly capabilities: TerminalCapabilities = {
+    nativeCwd: false,
+    nativeCommand: false,
+    tabDelay: 100,
+  };
 
   matches(env: NodeJS.ProcessEnv): boolean {
     return (env.TERM_PROGRAM ?? "").toLowerCase() === "iterm.app";
   }
 
-  async openTab(opts: { cwd: string; command?: string }): Promise<void> {
-    const fullCmd = buildFullCmd(opts.cwd, opts.command);
+  async openTab(opts: TabOpenOptions): Promise<void> {
+    const fullCmd = buildPosixCmd(opts.cwd, opts.command);
     const script = `
 tell application "iTerm2"
   activate
@@ -49,13 +31,18 @@ end tell`;
 
 export class MacOSTerminalAppAdapter implements TerminalAdapter {
   readonly id = "terminal-app";
+  readonly capabilities: TerminalCapabilities = {
+    nativeCwd: false,
+    nativeCommand: false,
+    tabDelay: 500,
+  };
 
   matches(env: NodeJS.ProcessEnv): boolean {
     return (env.TERM_PROGRAM ?? "").toLowerCase() === "apple_terminal";
   }
 
-  async openTab(opts: { cwd: string; command?: string }): Promise<void> {
-    const fullCmd = buildFullCmd(opts.cwd, opts.command);
+  async openTab(opts: TabOpenOptions): Promise<void> {
+    const fullCmd = buildPosixCmd(opts.cwd, opts.command);
     const script = `
 tell application "Terminal"
   activate
@@ -69,13 +56,18 @@ end tell`;
 
 export class MacOSGhosttyAdapter implements TerminalAdapter {
   readonly id = "ghostty";
+  readonly capabilities: TerminalCapabilities = {
+    nativeCwd: false,
+    nativeCommand: false,
+    tabDelay: 500,
+  };
 
   matches(env: NodeJS.ProcessEnv): boolean {
     return (env.TERM_PROGRAM ?? "").toLowerCase() === "ghostty";
   }
 
-  async openTab(opts: { cwd: string; command?: string }): Promise<void> {
-    const fullCmd = buildFullCmd(opts.cwd, opts.command);
+  async openTab(opts: TabOpenOptions): Promise<void> {
+    const fullCmd = buildPosixCmd(opts.cwd, opts.command);
     const script = `
 tell application "Ghostty" to activate
 tell application "System Events"
@@ -90,13 +82,18 @@ end tell`;
 
 export class MacOSWarpAdapter implements TerminalAdapter {
   readonly id = "warp";
+  readonly capabilities: TerminalCapabilities = {
+    nativeCwd: false,
+    nativeCommand: false,
+    tabDelay: 500,
+  };
 
   matches(env: NodeJS.ProcessEnv): boolean {
     return (env.TERM_PROGRAM ?? "").toLowerCase() === "warpterminal";
   }
 
-  async openTab(opts: { cwd: string; command?: string }): Promise<void> {
-    const fullCmd = buildFullCmd(opts.cwd, opts.command);
+  async openTab(opts: TabOpenOptions): Promise<void> {
+    const fullCmd = buildPosixCmd(opts.cwd, opts.command);
     const script = `
 tell application "Warp" to activate
 tell application "System Events"
