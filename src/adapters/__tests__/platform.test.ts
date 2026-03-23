@@ -61,6 +61,95 @@ describe("Platform resolution", () => {
       );
     });
 
+    test("resolves tmux when TMUX is set", () => {
+      expect(
+        resolveTerminal({ TMUX: "/tmp/tmux-501/default,12345,0" })?.id,
+      ).toBe("tmux");
+    });
+
+    test("resolves Zellij when ZELLIJ is set", () => {
+      expect(resolveTerminal({ ZELLIJ: "my-session" })?.id).toBe("zellij");
+    });
+
+    test("tmux takes priority over iTerm2", () => {
+      expect(
+        resolveTerminal({
+          TMUX: "/tmp/tmux-501/default,12345,0",
+          TERM_PROGRAM: "iTerm.app",
+        })?.id,
+      ).toBe("tmux");
+    });
+
+    test("zellij takes priority over iTerm2", () => {
+      expect(
+        resolveTerminal({
+          ZELLIJ: "session",
+          TERM_PROGRAM: "iTerm.app",
+        })?.id,
+      ).toBe("zellij");
+    });
+
+    test("tmux takes priority over zellij", () => {
+      expect(
+        resolveTerminal({
+          TMUX: "/tmp/tmux-501/default,12345,0",
+          ZELLIJ: "session",
+        })?.id,
+      ).toBe("tmux");
+    });
+
+    test("resolves WezTerm", () => {
+      expect(resolveTerminal({ TERM_PROGRAM: "WezTerm" })?.id).toBe(
+        "wezterm",
+      );
+    });
+
+    test("resolves kitty via TERM_PROGRAM", () => {
+      expect(resolveTerminal({ TERM_PROGRAM: "kitty" })?.id).toBe("kitty");
+    });
+
+    test("resolves kitty via KITTY_WINDOW_ID", () => {
+      expect(resolveTerminal({ KITTY_WINDOW_ID: "1" })?.id).toBe("kitty");
+    });
+
+    test("WezTerm takes priority over macOS adapters", () => {
+      expect(resolveTerminal({ TERM_PROGRAM: "WezTerm" })?.id).toBe(
+        "wezterm",
+      );
+    });
+
+    test("tmux takes priority over WezTerm", () => {
+      expect(
+        resolveTerminal({
+          TMUX: "/tmp/tmux-501/default,12345,0",
+          TERM_PROGRAM: "WezTerm",
+        })?.id,
+      ).toBe("tmux");
+    });
+
+    test("resolves GNOME Terminal via GNOME_TERMINAL_SERVICE", () => {
+      expect(
+        resolveTerminal({ GNOME_TERMINAL_SERVICE: ":1.123" })?.id,
+      ).toBe("gnome-terminal");
+    });
+
+    test("resolves Konsole via KONSOLE_DBUS_SERVICE", () => {
+      expect(
+        resolveTerminal({
+          KONSOLE_DBUS_SERVICE: "org.kde.konsole-1234",
+        })?.id,
+      ).toBe("konsole");
+    });
+
+    test("macOS adapters take priority over GNOME Terminal", () => {
+      expect(
+        resolveTerminal({
+          TERM_PROGRAM: "iTerm.app",
+          GNOME_TERMINAL_SERVICE: ":1.123",
+        })?.id,
+      ).toBe("iterm2");
+    });
+
     test("returns null for unknown terminal", () => {
       expect(resolveTerminal({ TERM_PROGRAM: "SomeWeirdTerminal" })).toBeNull();
     });

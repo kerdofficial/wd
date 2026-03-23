@@ -474,14 +474,30 @@ If a project path no longer exists, `wd open` exits with a clear error.
 
 **Terminal tab support:**
 
-| Terminal | Method |
-| -------- | ------ |
-| iTerm2 | Native AppleScript API |
-| Terminal.app | AppleScript `do script` |
-| Ghostty | Keystroke simulation (`Cmd+T`) |
-| Warp | Keystroke simulation (`Cmd+T`) |
+`wd` detects your terminal automatically and uses the best available method. Multiplexers (tmux, Zellij) take priority when detected.
 
-macOS asks for Automation permission the first time `wd` opens tabs with AppleScript.
+| Terminal | Platform | Method |
+| -------- | -------- | ------ |
+| tmux | Cross-platform | `tmux new-window` + `send-keys` |
+| Zellij | Cross-platform | `zellij action new-tab` + `write-chars` |
+| WezTerm | Cross-platform | `wezterm cli spawn` + `send-text` |
+| kitty | Cross-platform | `kitten @ launch` + `send-text` |
+| iTerm2 | macOS | Native AppleScript API |
+| Terminal.app | macOS | AppleScript `do script` |
+| Ghostty | macOS | Keystroke simulation (`Cmd+T`) |
+| Warp | macOS | Keystroke simulation (`Cmd+T`) |
+| GNOME Terminal / Ptyxis | Linux | CLI (`ptyxis --tab` or `gnome-terminal --tab`) |
+| Konsole | Linux | D-Bus (`qdbus`) with CLI fallback |
+
+**macOS notes:**
+- macOS asks for Automation permission the first time `wd` opens tabs with AppleScript.
+
+**Linux notes:**
+- Linux terminal support is experimental. If you encounter issues, please [open an issue](https://github.com/kerdofficial/wd/issues).
+- **kitty** requires remote control to be enabled. Add `allow_remote_control yes` to `~/.config/kitty/kitty.conf` and restart kitty. See [kitty remote control docs](https://sw.kovidgoyal.net/kitty/remote-control/).
+- **Konsole** uses D-Bus for tab management when `qdbus` is available (pre-installed on most KDE systems). Falls back to CLI otherwise.
+- **GNOME Terminal / Ptyxis**: On Ubuntu 24.04+, the default terminal is Ptyxis (not `gnome-terminal`). `wd` auto-detects which binary is available.
+- Tab commands in GNOME Terminal / Ptyxis and Konsole CLI fallback run via `sh -c`, so shell aliases may not be available. Use tmux or Zellij inside these terminals for full alias support.
 
 ### Editing a workspace
 
@@ -1029,9 +1045,23 @@ Recent versions of `wd` print a helpful command list instead of silently falling
 
 **Tabs are not opening**
 
-- `wd` uses AppleScript and macOS Automation permissions for tab opening
-- Ghostty and Warp rely on keystroke simulation, which is less reliable if the terminal loses focus
 - tabs only open for workspace projects that actually have tab entries configured
+- on macOS, `wd` uses AppleScript and macOS Automation permissions for tab opening
+- Ghostty and Warp rely on keystroke simulation, which is less reliable if the terminal loses focus
+- on Linux, make sure your terminal is supported (see terminal tab support table above)
+- kitty requires `allow_remote_control yes` in `~/.config/kitty/kitty.conf`
+- Konsole D-Bus requires `qdbus` — install it with `sudo apt install qdbus-qt5` if missing
+- if no supported terminal is detected, `wd` still performs `cd` and runs Docker, but skips tab opening
+
+**Linux terminal issues**
+
+Linux terminal support is experimental. Known limitations:
+
+- GNOME Terminal / Ptyxis: the `--tab` flag may open a new window instead of a tab in some configurations
+- Konsole CLI fallback (without `qdbus`): may open a new window instead of a tab
+- Tab commands in GNOME Terminal / Ptyxis run via `sh -c`, so shell aliases are not available
+
+If you encounter issues with terminal tab opening on Linux, please [open an issue](https://github.com/kerdofficial/wd/issues) with your distribution, terminal emulator, and the output of `env | grep -iE 'term|vte|konsole|zellij|tmux|kitty'`.
 
 **`wd open` changed directory but my editor stayed in the old place**
 

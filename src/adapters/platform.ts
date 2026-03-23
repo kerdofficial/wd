@@ -6,6 +6,13 @@ import { BashShellAdapter } from "./shell/bash";
 import { FishShellAdapter } from "./shell/fish";
 import { PowerShellShellAdapter } from "./shell/pwsh";
 import { NushellShellAdapter } from "./shell/nushell";
+import { TmuxAdapter, ZellijAdapter } from "./terminal/multiplexer";
+import {
+  WezTermAdapter,
+  KittyAdapter,
+  GnomeTerminalAdapter,
+  KonsoleAdapter,
+} from "./terminal/linux";
 import {
   MacOSITerm2Adapter,
   MacOSTerminalAppAdapter,
@@ -35,10 +42,16 @@ const shellAdapters: ShellAdapter[] = [
 ];
 
 const terminalAdapters: TerminalAdapter[] = [
+  new TmuxAdapter(),
+  new ZellijAdapter(),
+  new WezTermAdapter(),
+  new KittyAdapter(),
   new MacOSITerm2Adapter(),
   new MacOSTerminalAppAdapter(),
   new MacOSGhosttyAdapter(),
   new MacOSWarpAdapter(),
+  new KonsoleAdapter(),
+  new GnomeTerminalAdapter(),
 ];
 
 export function resolveShell(shellId?: string): ShellAdapter {
