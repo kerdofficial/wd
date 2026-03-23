@@ -7,6 +7,7 @@ import { FishShellAdapter } from "./shell/fish";
 import { PowerShellShellAdapter } from "./shell/pwsh";
 import { NushellShellAdapter } from "./shell/nushell";
 import { TmuxAdapter, ZellijAdapter } from "./terminal/multiplexer";
+import { WezTermAdapter, KittyAdapter } from "./terminal/linux";
 import {
   MacOSITerm2Adapter,
   MacOSTerminalAppAdapter,
@@ -38,6 +39,8 @@ const shellAdapters: ShellAdapter[] = [
 const terminalAdapters: TerminalAdapter[] = [
   new TmuxAdapter(),
   new ZellijAdapter(),
+  new WezTermAdapter(),
+  new KittyAdapter(),
   new MacOSITerm2Adapter(),
   new MacOSTerminalAppAdapter(),
   new MacOSGhosttyAdapter(),

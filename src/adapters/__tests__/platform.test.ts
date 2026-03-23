@@ -98,6 +98,35 @@ describe("Platform resolution", () => {
       ).toBe("tmux");
     });
 
+    test("resolves WezTerm", () => {
+      expect(resolveTerminal({ TERM_PROGRAM: "WezTerm" })?.id).toBe(
+        "wezterm",
+      );
+    });
+
+    test("resolves kitty via TERM_PROGRAM", () => {
+      expect(resolveTerminal({ TERM_PROGRAM: "kitty" })?.id).toBe("kitty");
+    });
+
+    test("resolves kitty via KITTY_WINDOW_ID", () => {
+      expect(resolveTerminal({ KITTY_WINDOW_ID: "1" })?.id).toBe("kitty");
+    });
+
+    test("WezTerm takes priority over macOS adapters", () => {
+      expect(resolveTerminal({ TERM_PROGRAM: "WezTerm" })?.id).toBe(
+        "wezterm",
+      );
+    });
+
+    test("tmux takes priority over WezTerm", () => {
+      expect(
+        resolveTerminal({
+          TMUX: "/tmp/tmux-501/default,12345,0",
+          TERM_PROGRAM: "WezTerm",
+        })?.id,
+      ).toBe("tmux");
+    });
+
     test("returns null for unknown terminal", () => {
       expect(resolveTerminal({ TERM_PROGRAM: "SomeWeirdTerminal" })).toBeNull();
     });
