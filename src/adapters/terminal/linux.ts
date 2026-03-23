@@ -3,6 +3,7 @@ import type {
   TabOpenOptions,
   TerminalCapabilities,
 } from "./adapter";
+import { buildPosixCmd, commandExists } from "./helpers";
 
 export class WezTermAdapter implements TerminalAdapter {
   readonly id = "wezterm";
@@ -80,5 +81,132 @@ export class KittyAdapter implements TerminalAdapter {
       });
       await sendText.exited;
     }
+  }
+}
+
+export class GnomeTerminalAdapter implements TerminalAdapter {
+  readonly id = "gnome-terminal";
+  readonly capabilities: TerminalCapabilities = {
+    nativeCwd: true,
+    nativeCommand: false,
+    tabDelay: 200,
+  };
+
+  private terminalBinary: string | null = null;
+
+  matches(env: NodeJS.ProcessEnv): boolean {
+    if (
+      (env.GNOME_TERMINAL_SERVICE &&
+        env.GNOME_TERMINAL_SERVICE.length > 0) ||
+      (env.GNOME_TERMINAL_SCREEN && env.GNOME_TERMINAL_SCREEN.length > 0)
+    ) {
+      return true;
+    }
+
+    return !!(
+      env.VTE_VERSION &&
+      env.VTE_VERSION.length > 0 &&
+      env.XDG_CURRENT_DESKTOP &&
+      env.XDG_CURRENT_DESKTOP.toLowerCase().includes("gnome")
+    );
+  }
+
+  async openTab(opts: TabOpenOptions): Promise<void> {
+    if (this.terminalBinary === null) {
+      if (await commandExists("ptyxis")) {
+        this.terminalBinary = "ptyxis";
+      } else if (await commandExists("gnome-terminal")) {
+        this.terminalBinary = "gnome-terminal";
+      } else {
+        return;
+      }
+    }
+
+    if (this.terminalBinary === "ptyxis") {
+      await this.openTabViaPtyxis(opts);
+    } else {
+      await this.openTabViaGnomeTerminal(opts);
+    }
+  }
+
+  private async openTabViaPtyxis(opts: TabOpenOptions): Promise<void> {
+    const args = ["ptyxis", "--tab", "-d", opts.cwd];
+    if (opts.command) {
+      args.push("--", "sh", "-c", `${opts.command}; exec $SHELL`);
+    }
+    const proc = Bun.spawn(args, { stdout: "ignore", stderr: "ignore" });
+    await proc.exited;
+  }
+
+  private async openTabViaGnomeTerminal(opts: TabOpenOptions): Promise<void> {
+    const args = [
+      "gnome-terminal",
+      "--tab",
+      `--working-directory=${opts.cwd}`,
+    ];
+    if (opts.command) {
+      args.push("--", "sh", "-c", `${opts.command}; exec $SHELL`);
+    }
+    const proc = Bun.spawn(args, { stdout: "ignore", stderr: "ignore" });
+    await proc.exited;
+  }
+}
+
+export class KonsoleAdapter implements TerminalAdapter {
+  readonly id = "konsole";
+  readonly capabilities: TerminalCapabilities = {
+    nativeCwd: false,
+    nativeCommand: false,
+    tabDelay: 200,
+  };
+
+  private hasQdbus: boolean | null = null;
+
+  matches(env: NodeJS.ProcessEnv): boolean {
+    return !!(
+      env.KONSOLE_DBUS_SERVICE && env.KONSOLE_DBUS_SERVICE.length > 0
+    );
+  }
+
+  async openTab(opts: TabOpenOptions): Promise<void> {
+    if (this.hasQdbus === null) {
+      this.hasQdbus = await commandExists("qdbus");
+    }
+
+    if (this.hasQdbus) {
+      await this.openTabViaDbus(opts);
+    } else {
+      await this.openTabViaCli(opts);
+    }
+  }
+
+  private async openTabViaDbus(opts: TabOpenOptions): Promise<void> {
+    const service = process.env.KONSOLE_DBUS_SERVICE!;
+    const window = process.env.KONSOLE_DBUS_WINDOW ?? "/Windows/1";
+
+    const newSession = Bun.spawn(
+      ["qdbus", service, window, "newSession", "", opts.cwd],
+      { stdout: "pipe", stderr: "ignore" },
+    );
+    const output = await new Response(newSession.stdout).text();
+    await newSession.exited;
+
+    const sessionId = output.trim();
+    if (!sessionId || !opts.command) return;
+
+    const runCmd = Bun.spawn(
+      ["qdbus", service, `/Sessions/${sessionId}`, "runCommand", opts.command],
+      { stdout: "ignore", stderr: "ignore" },
+    );
+    await runCmd.exited;
+  }
+
+  private async openTabViaCli(opts: TabOpenOptions): Promise<void> {
+    const args = ["konsole", "--new-tab", "--workdir", opts.cwd];
+    if (opts.command) {
+      args.push("-e", "sh", "-c", `${opts.command}; exec $SHELL`);
+    }
+    const proc = Bun.spawn(args, { stdout: "ignore", stderr: "ignore" });
+    await proc.exited;
   }
 }

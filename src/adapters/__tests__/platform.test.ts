@@ -127,6 +127,29 @@ describe("Platform resolution", () => {
       ).toBe("tmux");
     });
 
+    test("resolves GNOME Terminal via GNOME_TERMINAL_SERVICE", () => {
+      expect(
+        resolveTerminal({ GNOME_TERMINAL_SERVICE: ":1.123" })?.id,
+      ).toBe("gnome-terminal");
+    });
+
+    test("resolves Konsole via KONSOLE_DBUS_SERVICE", () => {
+      expect(
+        resolveTerminal({
+          KONSOLE_DBUS_SERVICE: "org.kde.konsole-1234",
+        })?.id,
+      ).toBe("konsole");
+    });
+
+    test("macOS adapters take priority over GNOME Terminal", () => {
+      expect(
+        resolveTerminal({
+          TERM_PROGRAM: "iTerm.app",
+          GNOME_TERMINAL_SERVICE: ":1.123",
+        })?.id,
+      ).toBe("iterm2");
+    });
+
     test("returns null for unknown terminal", () => {
       expect(resolveTerminal({ TERM_PROGRAM: "SomeWeirdTerminal" })).toBeNull();
     });
