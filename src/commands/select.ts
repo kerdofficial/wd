@@ -12,6 +12,7 @@ import { scanProjects } from "../core/scanner";
 import { filterAndRank } from "../core/fuzzy";
 import { recordVisit } from "../core/frecency";
 import type { ShellOutput } from "../utils/shell";
+import type { PlatformContext } from "../adapters/platform";
 import type { Cache, ProjectEntry } from "../config/schema";
 import { typeLabel, registerCustomTypes, clearScreen } from "../ui/format";
 import { pathExists } from "../utils/fs";
@@ -33,11 +34,11 @@ function formatChoice(project: ProjectEntry): { name: string; value: string; des
   };
 }
 
-export async function select(shellOutput: ShellOutput): Promise<void> {
-  await gracefulRun(() => _select(shellOutput));
+export async function select(shellOutput: ShellOutput, platform: PlatformContext): Promise<void> {
+  await gracefulRun(() => _select(shellOutput, platform));
 }
 
-async function _select(shellOutput: ShellOutput): Promise<void> {
+async function _select(shellOutput: ShellOutput, platform: PlatformContext): Promise<void> {
   clearScreen();
   const config = await requireConfig();
 
@@ -69,6 +70,7 @@ async function _select(shellOutput: ShellOutput): Promise<void> {
       return results.map((r) => formatChoice(r.item));
     },
     pageSize: 15,
+    clipboard: platform.clipboard,
   });
 
   const targetPath = result.parentDir ? dirname(result.path) : result.path;

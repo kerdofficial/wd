@@ -8,18 +8,19 @@ import {
   findPortConflict,
   stopContainer,
 } from "../core/docker";
-import { openWorkspaceTabs } from "../core/terminal";
+import { openWorkspaceTabs } from "../adapters/terminal/ops";
 import { recordVisit } from "../core/frecency";
 import { gracefulRun } from "../utils/prompt-wrapper";
 import type { ShellOutput } from "../utils/shell";
+import type { PlatformContext } from "../adapters/platform";
 import { pathExists } from "../utils/fs";
 import { bold, cyan, green, yellow, red, gray } from "../ui/format";
 
-export async function open(name: string, shellOutput: ShellOutput): Promise<void> {
-  await gracefulRun(() => _open(name, shellOutput));
+export async function open(name: string, shellOutput: ShellOutput, platform: PlatformContext): Promise<void> {
+  await gracefulRun(() => _open(name, shellOutput, platform));
 }
 
-async function _open(name: string, shellOutput: ShellOutput): Promise<void> {
+async function _open(name: string, shellOutput: ShellOutput, platform: PlatformContext): Promise<void> {
   const workspace = await loadWorkspace(name);
 
   if (!workspace) {
@@ -104,9 +105,9 @@ async function _open(name: string, shellOutput: ShellOutput): Promise<void> {
   console.log(`  ${green("✓")} cd → ${bold(primaryName)}`);
 
   // Open terminal tabs for all projects
-  if (workspace.projects.some((p) => p.tabs && p.tabs.length > 0)) {
+  if (platform.terminal && workspace.projects.some((p) => p.tabs && p.tabs.length > 0)) {
     console.log(`  ${gray("⇥")} Opening tabs...`);
-    await openWorkspaceTabs(workspace.projects);
+    await openWorkspaceTabs(workspace.projects, platform.terminal);
   }
 
   console.log();

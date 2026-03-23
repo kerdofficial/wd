@@ -6,13 +6,14 @@ import {
   getWorkspaceTailArgs,
 } from "./core/cli-routing";
 import { ShellOutput } from "./utils/shell";
+import { initPlatform } from "./adapters/platform";
 
 const program = new Command();
 
 program
   .name("wd-bin")
   .description("Workspace Director — fast project navigation")
-  .version("1.3.0")
+  .version("1.4.0")
   .option("--shell-out <path>", "internal: path to write shell commands")
   .allowUnknownOption()
   .allowExcessArguments(true);
@@ -20,7 +21,8 @@ program
 // Default action: interactive project selector.
 // Any extra arguments mean the user mistyped a command — show a helpful error.
 program.action(async (options) => {
-  const shellOut = new ShellOutput(options.shellOut as string | undefined);
+  const platform = initPlatform();
+  const shellOut = new ShellOutput(options.shellOut as string | undefined, platform.shell);
   const extraArgs = getRootExtraArgs(process.argv);
 
   if (extraArgs.length > 0) {
@@ -38,7 +40,7 @@ program.action(async (options) => {
   }
 
   const { select } = await import("./commands/select");
-  await select(shellOut);
+  await select(shellOut, platform);
 });
 
 // wd setup
@@ -47,7 +49,8 @@ program
   .description("Configure base directories to scan for projects")
   .action(async () => {
     const { setup } = await import("./commands/setup");
-    await setup();
+    const platform = initPlatform();
+    await setup(platform.shell);
   });
 
 // wd config
@@ -74,10 +77,12 @@ program
   .description("Show recently visited projects (frecency-ranked)")
   .action(async (_, cmd) => {
     const { recent } = await import("./commands/recent");
+    const platform = initPlatform();
     const shellOut = new ShellOutput(
       (cmd.parent as Command | undefined)?.opts().shellOut as
         | string
         | undefined,
+      platform.shell,
     );
     await recent(shellOut);
   });
@@ -90,12 +95,14 @@ program
   )
   .action(async (name: string, _, cmd) => {
     const { open } = await import("./commands/open");
+    const platform = initPlatform();
     const shellOut = new ShellOutput(
       (cmd.parent as Command | undefined)?.opts().shellOut as
         | string
         | undefined,
+      platform.shell,
     );
-    await open(name, shellOut);
+    await open(name, shellOut, platform);
   });
 
 // wd new [app-name]
@@ -106,9 +113,11 @@ program
   .allowExcessArguments(true)
   .action(async (_, __, cmd) => {
     const { newProject } = await import("./commands/new");
+    const platform = initPlatform();
     const parentCmd = cmd.parent as typeof program | undefined;
     const shellOut = new ShellOutput(
       parentCmd?.opts().shellOut as string | undefined,
+      platform.shell,
     );
     await newProject(shellOut);
   });
@@ -128,10 +137,12 @@ ws.action(async (_, cmd) => {
   }
 
   const { workspaceSelect } = await import("./commands/workspace-select");
+  const platform = initPlatform();
   const shellOut = new ShellOutput(
     (cmd.parent as Command | undefined)?.opts().shellOut as string | undefined,
+    platform.shell,
   );
-  await workspaceSelect(shellOut);
+  await workspaceSelect(shellOut, platform);
 });
 
 ws.command("new")

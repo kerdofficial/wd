@@ -21,6 +21,7 @@ import {
 } from "@inquirer/core";
 import colors from "yoctocolors-cjs";
 import figures from "@inquirer/figures";
+import type { ClipboardAdapter } from "../adapters/clipboard/adapter";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,7 @@ interface ProjectSearchConfig {
   validate?: (
     value: string
   ) => boolean | string | Promise<string | boolean>;
+  clipboard?: ClipboardAdapter | null;
 }
 
 // ─── Internal normalised choice ───────────────────────────────────────────────
@@ -103,13 +105,6 @@ function normalizeChoices(
     if (choice.description) normalized.description = choice.description;
     return normalized;
   });
-}
-
-async function copyToClipboard(text: string): Promise<void> {
-  const proc = Bun.spawn(["pbcopy"], { stdin: "pipe" });
-  proc.stdin.write(text);
-  proc.stdin.end();
-  await proc.exited;
 }
 
 // ─── Prompt ───────────────────────────────────────────────────────────────────
@@ -189,8 +184,8 @@ export default createPrompt<ProjectSearchResult, ProjectSearchConfig>(
 
       // Ctrl+Y: copy selected path to clipboard, stay in prompt
       if (key.ctrl && key.name === "y") {
-        if (selectedChoice && isSelectable(selectedChoice)) {
-          void copyToClipboard(selectedChoice.value).then(() => {
+        if (selectedChoice && isSelectable(selectedChoice) && config.clipboard) {
+          void config.clipboard.copy(selectedChoice.value).then(() => {
             setCopiedFeedback(true);
             setTimeout(() => setCopiedFeedback(false), 1500);
           });
