@@ -20,6 +20,7 @@ import {
   MacOSWarpAdapter,
 } from "./terminal/macos";
 import { MacOSClipboardAdapter } from "./clipboard/macos";
+import { LinuxClipboardAdapter } from "./clipboard/linux";
 
 export type { ShellAdapter } from "./shell/adapter";
 export type { ShellOp } from "./shell/adapter";
@@ -77,7 +78,9 @@ export function resolveTerminal(
 }
 
 export function resolveClipboard(): ClipboardAdapter | null {
-  return new MacOSClipboardAdapter();
+  if (process.platform === "darwin") return new MacOSClipboardAdapter();
+  if (process.platform === "linux") return new LinuxClipboardAdapter();
+  return null;
 }
 
 export function initPlatform(): PlatformContext {
